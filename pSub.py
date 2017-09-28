@@ -270,6 +270,7 @@ class pSub(object):
             '-loglevel',
             'fatal',
         ]
+
         if not self.display:
             params += ['-nodisp']
 
