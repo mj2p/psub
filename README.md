@@ -14,7 +14,9 @@ After a quick search I didn't find what I was after so I decided to build someth
 
 pSub is intended to be very simple and focus just on playing music easily. Don't expect to be able to access advanced configuration of a Subsonic server or playlist management.
   
-pSub is written in Python (written with 3.5 but 2.7 should work) using Click (the Command Line Interface Creation Kit) and requests to handle the communication with the Subsonic API.  
+pSub is written in Python (written with 3.5 but 2.7 should work) using Click (the Command Line Interface Creation Kit) and Requests to handle the communication with the Subsonic API.  
+It should run on most operating systems too but this hasn't been tested.   
+  
 
 #### Installation
 ##### Dependencies
@@ -22,7 +24,7 @@ pSub uses [ffplay](https://ffmpeg.org/ffplay.html) to handle the streaming of mu
   
 Python, pip and virtualenv also need to be installed
 ##### Instructions
-(Tested on Ubuntu)
+(Tested on Ubuntu, other operating systems may vary)
 - Clone this repo  
 `git clone github.com/inuitwallet/psub.git`
 - Enter the pSub directory  
