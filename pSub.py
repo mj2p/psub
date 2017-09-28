@@ -250,30 +250,31 @@ class pSub(object):
             fg='green'
         )
 
+        params = [
+            'ffplay',
+            '-i',
+            '{}&id={}&format={}'.format(stream_url, song_id, self.format),
+            '-showmode',
+            '{}'.format(self.show_mode),
+            '-window_title',
+            '{} by {}'.format(
+                track_data.get('title', ''),
+                track_data.get('artist', '')
+            ),
+            '-autoexit',
+            '-hide_banner',
+            '-x',
+            '500',
+            '-y',
+            '500',
+            '-loglevel',
+            'fatal',
+        ]
+        if not self.display:
+            params += ['-nodisp']
+
         try:
-            ffplay = Popen(
-                [
-                    'ffplay',
-                    '-i',
-                    '{}&id={}&format=raw'.format(stream_url, song_id),
-                    '-showmode',
-                    '2',
-                    '-window_title',
-                    '{} by {}'.format(
-                        track_data.get('title', ''),
-                        track_data.get('artist', '')
-                    ),
-                    '-autoexit',
-                    '-hide_banner',
-                    '-x',
-                    '500',
-                    '-y',
-                    '500',
-                    '-loglevel',
-                    'fatal',
-                    '-nodisp'
-                ],
-            )
+            ffplay = Popen(params)
 
             has_finished = None
             open(os.path.join(click.get_app_dir('pSub'), 'play.lock'), 'w+').close()
@@ -509,3 +510,8 @@ def radio(psub, target):
     psub.show_banner('Playing Radio')
 
     psub.play_radio(radio_id)
+
+
+@cli.command()
+def config():
+    click.edit(filename=os.path.join(click.get_app_dir('pSub'), 'config.yaml'))
