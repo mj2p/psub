@@ -18,7 +18,7 @@ pSub is written in Python (written with 3.5 but 2.7 should work) using Click (th
 
 #### Installation
 ##### Dependencies
-pSub uses (ffplay)[https://ffmpeg.org/ffplay.html] to handle the streaming of music so that needs to be installed before use and available as a command line executable.
+pSub uses [ffplay](https://ffmpeg.org/ffplay.html) to handle the streaming of music so that needs to be installed before use and available as a command line executable.
   
 Python, pip and virtualenv also need to be installed
 ##### Instructions
