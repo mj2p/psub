@@ -38,4 +38,4 @@ or
 - Run pSub  
 `ve/bin/pSub`  
 
-https://github.com/inuitwallet/psub/blob/images/playlist.gif
+![](https://github.com/inuitwallet/psub/blob/images/playlist.gif)
