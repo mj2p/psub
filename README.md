@@ -67,12 +67,12 @@ Commands:
 
 Here are some animations of the commands in action:  
 `psub album`  
-![]()https://github.com/inuitwallet/psub/blob/images/album.gif)  
+![](https://github.com/inuitwallet/psub/blob/images/album.gif)  
 `psub artist` (the `-r` flag indicates that tracks should be played back in a random order)
-![]()https://github.com/inuitwallet/psub/blob/images/artist.gif)  
+![](https://github.com/inuitwallet/psub/blob/images/artist.gif)  
 `psub playlist` (playlist must exist on the Subsonic server first)  
-![]()https://github.com/inuitwallet/psub/blob/images/playlist.gif)  
+![](https://github.com/inuitwallet/psub/blob/images/playlist.gif)  
 `psub radio`  
-![]()https://github.com/inuitwallet/psub/blob/images/radio.gif)  
+![](https://github.com/inuitwallet/psub/blob/images/radio.gif)  
 `psub random`  
-![]()https://github.com/inuitwallet/psub/blob/images/random.gif)
+![](https://github.com/inuitwallet/psub/blob/images/random.gif)
