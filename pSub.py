@@ -86,7 +86,7 @@ class pSub(object):
             click.secho('Test Passed', fg='green')
         else:
             click.secho('Test Failed! Please check your config', fg='black', bg='red')
-            sys.exit(1)
+            click.edit(filename=os.path.join(click.get_app_dir('pSub'), 'config.yaml'))
 
     def hash_password(self):
         """
@@ -283,6 +283,7 @@ class pSub(object):
             while has_finished is None:
                 has_finished = ffplay.poll()
                 if self.input_queue.empty():
+                    time.sleep(1)
                     continue
 
                 command = self.input_queue.get_nowait()
