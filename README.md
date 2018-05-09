@@ -37,3 +37,42 @@ or
 `ve/bin/pip install .`
 - Run pSub  
 `ve/bin/pSub`  
+
+
+####Usage
+On first run you will be prompted to edit your config file.  
+pSub will install  a default config file for you and then open it for editing in your default text editor.  
+The config file allows you to specify the url, username and password of your subsonic server.  
+There are also some settings for adjusting your playback options.  
+The settings are described in detail in the config file itself.  
+pSub will run a connection test once your config been saved to make sure it can communicate correctly with Subsonic. 
+You can edit your config or run the connection test at any time with the -c and -t command line flags.
+  
+Once pSub is properly configured, you can start playing music by running any of the commands shown below.
+```
+Usage: pSub [OPTIONS] COMMAND [ARGS]...  
+
+Options:  
+  -c, --config  Edit the config file  
+  -t, --test    Test the server configuration
+  -h, --help    Show this message and exit.
+
+Commands:
+  album     Play songs from chosen Album
+  artist    Play songs from chosen Artist
+  playlist  Play a chosen playlist
+  radio     Play endless Radio based on a search
+  random    Play random tracks
+```
+
+Here are some animations of the commands in action:  
+`psub album`  
+![]()https://github.com/inuitwallet/psub/blob/images/album.gif)  
+`psub artist` (the `-r` flag indicates that tracks should be played back in a random order)
+![]()https://github.com/inuitwallet/psub/blob/images/artist.gif)  
+`psub playlist` (playlist must exist on the Subsonic server first)  
+![]()https://github.com/inuitwallet/psub/blob/images/playlist.gif)  
+`psub radio`  
+![]()https://github.com/inuitwallet/psub/blob/images/radio.gif)  
+`psub random`  
+![]()https://github.com/inuitwallet/psub/blob/images/random.gif)
