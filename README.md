@@ -40,9 +40,7 @@ or
 
 
 #### Usage
-On first run you will be prompted to edit your config file.  
-pSub will install a default config file and then open it for editing in your default text editor.  
-You need to specify the url, username and password of your Subsonic server at a minimum.  
+On first run you will be prompted to edit your config file. pSub will install a default config file and then open it for editing in your default text editor. You need to specify the url, username and password of your Subsonic server at a minimum.  
 There are also some settings for adjusting your playback options. The settings are all described in detail in the config file itself.  
 pSub will run a connection test once your config been saved to make sure it can communicate correctly with Subsonic.   
 You can edit your config or run the connection test at any time with the -c and -t command line flags.
