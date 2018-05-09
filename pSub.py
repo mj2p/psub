@@ -103,7 +103,7 @@ class pSub(object):
         :param endpoint: REST endpoint to incorporate in the url
         """
         token, salt = self.hash_password()
-        url = '{}://{}/rest/{}?u={}&t={}&s={}&v=1.15.0&c=pSub&f=json'.format(
+        url = '{}://{}/rest/{}?u={}&t={}&s={}&v=1.16.0&c=pSub&f=json'.format(
             'https' if self.ssl else 'http',
             self.host,
             endpoint,
@@ -128,8 +128,8 @@ class pSub(object):
         except ValueError:
             status = 'failed'
 
-            # this is a bit of a hach to cope with the empty subsonic-response returned by the scrobble endpoint.
-            # it doesn't obbey the json format request
+            # this is a bit of a hack to cope with the empty subsonic-response returned by the scrobble endpoint.
+            # it doesn't obey the json format request
             if 'status="ok"' in r.text:
                 status = 'ok'
 
