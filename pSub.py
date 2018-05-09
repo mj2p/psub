@@ -409,13 +409,13 @@ class pSub(object):
                 command = self.input_queue.get_nowait()
                 self.input_queue.queue.clear()
 
-                if command == 'x':
+                if 'x' in command.lower():
                     click.secho('Exiting!', fg='blue')
                     os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
                     ffplay.terminate()
                     return False
 
-                if command == 'n':
+                if 'n' in command.lower():
                     click.secho('Skipping...', fg='blue')
                     os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
                     ffplay.terminate()
