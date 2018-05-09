@@ -2,17 +2,17 @@ import hashlib
 import os
 import string
 import time
-from random import SystemRandom
+from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
 
 import requests
-import sys
+from click import UsageError
 
 try:
     from queue import LifoQueue
 except ImportError:
-    from Queue import LifoQueue
+    from Queue import LifoQueue  # noqa
 
 import click
 import yaml
@@ -53,9 +53,7 @@ class pSub(object):
         self.format = streaming_config.get('format', 'raw')
         self.display = streaming_config.get('display', False)
         self.show_mode = streaming_config.get('show_mode', 0)
-
-        # Ping the server to check server config
-        self.test_config()
+        self.invert_random = streaming_config.get('invert_random', False)
 
         # use a Queue to handle command input while a file is playing.
         # set the thread going now
@@ -84,9 +82,10 @@ class pSub(object):
         ping = self.make_request(url=self.create_url('ping'))
         if ping:
             click.secho('Test Passed', fg='green')
+            return True
         else:
             click.secho('Test Failed! Please check your config', fg='black', bg='red')
-            click.edit(filename=os.path.join(click.get_app_dir('pSub'), 'config.yaml'))
+            return False
 
     def hash_password(self):
         """
@@ -161,10 +160,10 @@ class pSub(object):
         :param query: search term string
         """
         results = self.make_request(
-            url='{}&query={}'.format(self.create_url('search2'), query)
+            url='{}&query={}'.format(self.create_url('search3'), query)
         )
         if results:
-            return results['subsonic-response']['searchResult2']
+            return results['subsonic-response']['searchResult3']
         return []
 
     def get_artists(self):
@@ -177,6 +176,16 @@ class pSub(object):
             return artists['subsonic-response']['artists']['index']
         return []
 
+    def get_playlists(self):
+        """
+        Get a list of available playlists from the server
+        :return:
+        """
+        playlists = self.make_request(url=self.create_url('getPlaylists'))
+        if playlists:
+            return playlists['subsonic-response']['playlists']['playlist']
+        return []
+
     def get_music_folders(self):
         """
         Gather list of Music Folders from the Subsonic server
@@ -186,6 +195,20 @@ class pSub(object):
         if music_folders:
             return music_folders['subsonic-response']['musicFolders']['musicFolder']
         return []
+
+    def get_album_tracks(self, album_id):
+        """
+        return a list of album track ids for the given album id
+        :param album_id: id of the album
+        :return: list
+        """
+        album_info = self.make_request('{}&id={}'.format(self.create_url('getAlbum'), album_id))
+        songs = []
+
+        for song in album_info['subsonic-response']['album']['song']:
+            songs.append(song)
+
+        return songs
 
     def play_random_songs(self, music_folder):
         """
@@ -212,22 +235,98 @@ class pSub(object):
 
     def play_radio(self, radio_id):
         """
-        Get songs similar to the suplpied id and play them endlessly
-        :param radio_id: id of Album Artist or Song
+        Get songs similar to the supplied id and play them endlessly
+        :param radio_id: id of Artist
         """
         playing = True
         while playing:
             similar_songs = self.make_request(
-                '{}&id={}'.format(self.create_url('getSimilarSongs'), radio_id)
+                '{}&id={}'.format(self.create_url('getSimilarSongs2'), radio_id)
             )
 
             if not similar_songs:
                 return
 
-            for radio_track in similar_songs['subsonic-response']['similarSongs']['song']:
+            for radio_track in similar_songs['subsonic-response']['similarSongs2']['song']:
                 if not playing:
                     return
                 playing = self.play_stream(dict(radio_track))
+
+    def play_artist(self, artist_id, randomise):
+        """
+        Get the songs by the given artist_id and play them
+        :param artist_id:  id of the artist to play
+        :param randomise: if True, randomise the playback order
+        """
+        artist_info = self.make_request('{}&id={}'.format(self.create_url('getArtist'), artist_id))
+        songs = []
+
+        for album in artist_info['subsonic-response']['artist']['album']:
+            songs += self.get_album_tracks(album.get('id'))
+
+        if self.invert_random:
+            randomise = not randomise
+
+        if randomise:
+            shuffle(songs)
+
+        playing = True
+
+        while playing:
+            for song in songs:
+                if not playing:
+                    return
+                playing = self.play_stream(dict(song))
+
+    def play_album(self, album_id, randomise):
+        """
+        Get the songs for the given album id and play them
+        :param album_id:
+        :param randomise:
+        :return:
+        """
+
+        songs = self.get_album_tracks(album_id)
+
+        if self.invert_random:
+            randomise = not randomise
+
+        if randomise:
+            shuffle(songs)
+
+        playing = True
+
+        while playing:
+            for song in songs:
+                if not playing:
+                    return
+                playing = self.play_stream(dict(song))
+
+    def play_playlist(self, playlist_id, randomise):
+        """
+        Get the tracks from the supplied playlist id and play them
+        :param playlist_id:
+        :param randomise:
+        :return:
+        """
+        playlist_info = self.make_request(
+            url='{}&id={}'.format(self.create_url('getPlaylist'), playlist_id)
+        )
+        songs = playlist_info['subsonic-response']['playlist']['entry']
+
+        if self.invert_random:
+            randomise = not randomise
+
+        if randomise:
+            shuffle(songs)
+
+        playing = True
+
+        while playing:
+            for song in songs:
+                if not playing:
+                    return
+                playing = self.play_stream(dict(song))
 
     def play_stream(self, track_data):
         """
@@ -394,7 +493,7 @@ streaming:
     # pSub utilises ffplay (https://ffmpeg.org/ffplay.html) to play the streamed media
     # by default the player window is hidden and control takes place through the cli
     # set this to true to enable the player window. 
-    # It allows for more controls but will grab the focus of your 
+    # It allows for more controls (volume mainly) but will grab the focus of your 
     # keyboard when tracks change which can be annoying if you are typing 
 
     display: false
@@ -406,6 +505,13 @@ streaming:
     # 2: show audio frequency band using RDFT ((Inverse) Real Discrete Fourier Transform)
 
     show_mode: 0
+    
+    # Artist, Album and Playlist playback can accept a -r/--random flag.
+    # by default, setting the flag on the command line means "randomise playback".
+    # Setting the following to true will invert that behaviour so that playback is randomised by default
+    # and passing the -r flag skips the random shuffle
+    
+    invert_random: false
                 
 """
             )
@@ -419,15 +525,52 @@ streaming:
 #         \/        \/
 # Below are the CLI methods
 
-@click.group()
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+@click.group(
+    invoke_without_command=True,
+    context_settings=CONTEXT_SETTINGS
+)
 @click.pass_context
-def cli(ctx):
+@click.option(
+    '--config',
+    '-c',
+    is_flag=True,
+    help='Edit the config file'
+)
+@click.option(
+    '--test',
+    '-t',
+    is_flag=True,
+    help='Test the server configuration'
+)
+def cli(ctx, config, test):
     if not os.path.exists(click.get_app_dir('pSub')):
         os.mkdir(click.get_app_dir('pSub'))
 
-    config = os.path.join(click.get_app_dir('pSub'), 'config.yaml')
+    config_file = os.path.join(click.get_app_dir('pSub'), 'config.yaml')
 
-    ctx.obj = pSub(config)
+    if config:
+        test = True
+
+        try:
+            click.edit(filename=config_file, extension='yaml')
+        except UsageError:
+            click.secho('pSub was unable to open your config file for editing.', bg='red', fg='black')
+            click.secho('please open {} manually to edit your config file'.format(config_file), fg='yellow')
+            return
+
+    ctx.obj = pSub(config_file)
+
+    if test:
+        # Ping the server to check server config
+        test_ok = ctx.obj.test_config()
+        if not test_ok:
+            return
+
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 pass_pSub = click.make_pass_decorator(pSub)
@@ -459,42 +602,20 @@ def random(psub, music_folder):
     psub.play_random_songs(music_folder)
 
 
-@cli.command(help='play radio based on a search')
-@click.argument('target')
+@cli.command(help='Play endless Radio based on a search')
+@click.argument('search_term')
 @pass_pSub
-def radio(psub, target):
+def radio(psub, search_term):
     radio_id = None
 
     while not radio_id:
-        results = psub.search(target)
-        click.secho('Songs', bg='red', fg='black')
-        click.secho(
-            '\n'.join(
-                '{}\t{}\t{}'.format(
-                    song.get('id'),
-                    song.get('artist'),
-                    song.get('title')
-                ) for song in results.get('song', [])
-            ),
-            fg='yellow'
-        )
-        click.secho('Albums', bg='red', fg='black')
-        click.secho(
-            '\n'.join(
-                '{}\t{}\t{}'.format(
-                    album.get('id'),
-                    album.get('artist'),
-                    album.get('title')
-                ) for album in results.get('album', [])
-            ),
-            fg='yellow'
-        )
+        results = psub.search(search_term)
         click.secho('Artists', bg='red', fg='black')
         click.secho(
             '\n'.join(
                 '{}\t{}'.format(
-                    artist.get('id'),
-                    artist.get('name'),
+                    artist.get('id').ljust(7),
+                    artist.get('name').ljust(30),
                 ) for artist in results.get('artist', [])
             ),
             fg='yellow'
@@ -502,18 +623,153 @@ def radio(psub, target):
 
         radio_id = click.prompt(
             'Enter an id to start radio or Enter to search again',
-            default='',
+            type=int,
+            default=0,
             show_default=False
         )
 
         if not radio_id:
-            target = click.prompt('Enter a new search target')
+            search_term = click.prompt('Enter a new search target')
 
     psub.show_banner('Playing Radio')
 
     psub.play_radio(radio_id)
 
 
-@cli.command()
-def config():
-    click.edit(filename=os.path.join(click.get_app_dir('pSub'), 'config.yaml'))
+@cli.command(help='Play songs from chosen Artist')
+@click.argument('search_term')
+@click.option(
+    '--randomise',
+    '-r',
+    is_flag=True,
+    help='Randomise the order of track playback',
+)
+@pass_pSub
+def artist(psub, search_term, randomise):
+    artist_id = None
+    results = {}
+
+    while not artist_id:
+        results = psub.search(search_term)
+        click.secho('Artists', bg='red', fg='black')
+        click.secho(
+            '\n'.join(
+                '{}\t{}'.format(
+                    artist.get('id').ljust(7),
+                    artist.get('name').ljust(30),
+                ) for artist in results.get('artist', [])
+            ),
+            fg='yellow'
+        )
+
+        artist_id = click.prompt(
+            'Enter an id to start or Enter to search again',
+            default=0,
+            type=int,
+            show_default=False
+        )
+
+        if not artist_id:
+            search_term = click.prompt('Enter an artist_name to search again')
+
+    psub.show_banner(
+        'Playing {} tracks by {}'.format(
+            'randomised' if randomise else '',
+            ''.join(
+                artist.get('name') for artist in results.get('artist', []) if int(artist.get('id')) == int(artist_id)
+            )
+        )
+    )
+
+    psub.play_artist(artist_id, randomise)
+
+
+@cli.command(help='Play songs from chosen Album')
+@click.argument('search_term')
+@click.option(
+    '--randomise',
+    '-r',
+    is_flag=True,
+    help='Randomise the order of track playback',
+)
+@pass_pSub
+def album(psub, search_term, randomise):
+    album_id = None
+    results = {}
+
+    while not album_id:
+        results = psub.search(search_term)
+        click.secho('Albums', bg='red', fg='black')
+        click.secho(
+            '\n'.join(
+                '{}\t{}\t{}'.format(
+                    album.get('id').ljust(7),
+                    album.get('artist').ljust(30),
+                    album.get('name')
+                ) for album in results.get('album', [])
+            ),
+            fg='yellow'
+        )
+
+        album_id = click.prompt(
+            'Enter an id to start or Enter to search again',
+            type=int,
+            default=0,
+            show_default=False
+        )
+
+        if not album_id:
+            search_term = click.prompt('Enter an artist_name to search again')
+
+    psub.show_banner(
+        'Playing {} tracks from {}'.format(
+            'randomised' if randomise else '',
+            ''.join(
+                album.get('name') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
+            )
+        )
+    )
+
+    psub.play_album(album_id, randomise)
+
+
+@cli.command(help='Play a chosen playlist')
+@click.option(
+    '--randomise',
+    '-r',
+    is_flag=True,
+    help='Randomise the order of track playback',
+)
+@pass_pSub
+def playlist(psub, randomise):
+    playlist_id = None
+
+    while not playlist_id:
+        playlists = psub.get_playlists()
+        click.secho('Playlists', bg='red', fg='black')
+        click.secho(
+            '\n'.join(
+                '{}\t{}\t{} tracks'.format(
+                    playlist.get('id').ljust(7),
+                    playlist.get('name').ljust(30),
+                    playlist.get('songCount')
+                ) for playlist in playlists
+            ),
+            fg='yellow'
+        )
+
+        playlist_id = click.prompt(
+            'Enter an id to start',
+            type=int,
+        )
+
+    psub.show_banner(
+        'Playing {} tracks from the "{}" playlist'.format(
+            'randomised' if randomise else '',
+            ''.join(
+                playlist.get('name') for playlist in playlists if int(playlist.get('id')) == int(playlist_id)
+            )
+        )
+    )
+
+    psub.play_playlist(playlist_id, randomise)
