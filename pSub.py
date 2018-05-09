@@ -368,7 +368,6 @@ class pSub(object):
             fg='green'
         )
 
-        # scrobble
         self.scrobble(song_id)
 
         params = [
