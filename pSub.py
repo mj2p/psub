@@ -126,14 +126,20 @@ class pSub(object):
         try:
             response = r.json()
         except ValueError:
+            status = 'failed'
+
+            # this is a bit of a hach to cope with the empty subsonic-response returned by the scrobble endpoint.
+            # it doesn't obbey the json format request
+            if 'status="ok"' in r.text:
+                status = 'ok'
+
             response = {
                 'subsonic-response': {
                     'error': {
                         'code': 100,
                         'message': r.text
                     },
-                    'version': '1.15.0',
-                    'status': 'failed'
+                    'status': status
                 }
             }
 
@@ -152,6 +158,19 @@ class pSub(object):
             return None
 
         return response
+
+    def scrobble(self, song_id):
+        """
+        notify the Subsonic server that a track is being played within pSub
+        :param song_id:
+        :return:
+        """
+        self.make_request(
+            url='{}?&id={}'.format(
+                self.create_url('scrobble'),
+                song_id
+            )
+        )
 
     def search(self, query):
         """
@@ -348,6 +367,9 @@ class pSub(object):
             ),
             fg='green'
         )
+
+        # scrobble
+        self.scrobble(song_id)
 
         params = [
             'ffplay',
