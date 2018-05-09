@@ -9,7 +9,7 @@
 ```
 ### CLI Subsonic Client
 
-I was looking for a way to play music from my Subsonic server without needing a whole browser open and thought that a CLI tool might be fun.
+I was looking for a way to play music from my [Subsonic](https://subsonic.org) server without needing a whole browser open and thought that a CLI tool might be fun.
 After a quick search I didn't find what I was after so I decided to build something.  
 
 pSub is intended to be very simple and focus just on playing music easily. Don't expect to be able to access advanced configuration of a Subsonic server or playlist management.
@@ -32,6 +32,6 @@ Python, pip and virtualenv also need to be installed
 - Create a virtualenv  
 `virtualenv ve`
 - Install pSub  
-`pip install --editable .`
+`ve/bin/pip install --editable .`
 - Run pSub  
 `ve/bin/pSub`  
