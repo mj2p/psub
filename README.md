@@ -7,14 +7,14 @@
   |__|          \/          \/
    
 ```
-### CLI Subsonic Client
+## CLI Subsonic Client
 
 I was looking for a way to play music from my [Subsonic](https://subsonic.org) server without needing a whole browser open and thought that a CLI tool might be fun.
 After a quick search I didn't find what I was after so I decided to build something.  
 
 pSub is intended to be very simple and focus just on playing music easily. Don't expect to be able to access advanced configuration of a Subsonic server or playlist management.
   
-pSub is written in Python (written with 3.5 but 2.7 should work) using Click (the Command Line Interface Creation Kit) and Requests to handle the communication with the Subsonic API.  
+pSub is written in Python (written with 3.5 but 2.7 should work) using [Click](http://click.pocoo.org/6/)  to build the CLI and [Requests](http://docs.python-requests.org) to handle the communication with the Subsonic API.  
 It should run on most operating systems too but this hasn't been tested.   
   
 
@@ -30,9 +30,9 @@ Python, pip and virtualenv also need to be installed
 - Enter the pSub directory  
 `cd psub`
 - Create a virtualenv  
-`virtualenv ve`
-or
-`python3 -m venv ve`
+`virtualenv ve`  
+or  
+`python3 -m venv ve`  
 - Install pSub  
 `ve/bin/pip install .`
 - Run pSub  
@@ -41,11 +41,10 @@ or
 
 #### Usage
 On first run you will be prompted to edit your config file.  
-pSub will install  a default config file for you and then open it for editing in your default text editor.  
-The config file allows you to specify the url, username and password of your subsonic server.  
-There are also some settings for adjusting your playback options.  
-The settings are described in detail in the config file itself.  
-pSub will run a connection test once your config been saved to make sure it can communicate correctly with Subsonic. 
+pSub will install a default config file and then open it for editing in your default text editor.  
+You need to specify the url, username and password of your Subsonic server at a minimum.  
+There are also some settings for adjusting your playback options. The settings are all described in detail in the config file itself.  
+pSub will run a connection test once your config been saved to make sure it can communicate correctly with Subsonic.   
 You can edit your config or run the connection test at any time with the -c and -t command line flags.
   
 Once pSub is properly configured, you can start playing music by running any of the commands shown below.
