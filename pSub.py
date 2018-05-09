@@ -650,7 +650,7 @@ def radio(psub, search_term):
         )
 
         if not radio_id:
-            search_term = click.prompt('Enter a new search target')
+            search_term = click.prompt('Enter a new search')
 
     psub.show_banner('Playing Radio')
 
@@ -691,7 +691,7 @@ def artist(psub, search_term, randomise):
         )
 
         if not artist_id:
-            search_term = click.prompt('Enter an artist_name to search again')
+            search_term = click.prompt('Enter an artist name to search again')
 
     psub.show_banner(
         'Playing {} tracks by {}'.format(
@@ -740,7 +740,7 @@ def album(psub, search_term, randomise):
         )
 
         if not album_id:
-            search_term = click.prompt('Enter an artist_name to search again')
+            search_term = click.prompt('Enter an album name to search again')
 
     psub.show_banner(
         'Playing {} tracks from {}'.format(
