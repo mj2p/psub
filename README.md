@@ -39,7 +39,7 @@ or
 `ve/bin/pSub`  
 
 
-####Usage
+#### Usage
 On first run you will be prompted to edit your config file.  
 pSub will install  a default config file for you and then open it for editing in your default text editor.  
 The config file allows you to specify the url, username and password of your subsonic server.  
