@@ -31,7 +31,9 @@ Python, pip and virtualenv also need to be installed
 `cd psub`
 - Create a virtualenv  
 `virtualenv ve`
+or
+`python3 -m venv ve`
 - Install pSub  
-`ve/bin/pip install --editable .`
+`ve/bin/pip install .`
 - Run pSub  
 `ve/bin/pSub`  
