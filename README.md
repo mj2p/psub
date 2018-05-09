@@ -37,3 +37,5 @@ or
 `ve/bin/pip install .`
 - Run pSub  
 `ve/bin/pSub`  
+
+https://github.com/inuitwallet/psub/blob/images/playlist.gif
