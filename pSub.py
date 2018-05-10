@@ -126,20 +126,13 @@ class pSub(object):
         try:
             response = r.json()
         except ValueError:
-            status = 'failed'
-
-            # this is a bit of a hack to cope with the empty subsonic-response returned by the scrobble endpoint.
-            # it doesn't obey the json format request
-            if 'status="ok"' in r.text:
-                status = 'ok'
-
             response = {
                 'subsonic-response': {
                     'error': {
                         'code': 100,
                         'message': r.text
                     },
-                    'status': status
+                    'status': 'failed'
                 }
             }
 
@@ -166,7 +159,7 @@ class pSub(object):
         :return:
         """
         self.make_request(
-            url='{}?&id={}'.format(
+            url='{}&id={}'.format(
                 self.create_url('scrobble'),
                 song_id
             )
