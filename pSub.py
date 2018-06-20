@@ -408,6 +408,12 @@ class pSub(object):
                     ffplay.terminate()
                     return False
 
+                if 'b' in command.lower():
+                    click.secho('Restarting Track....', fg='blue')
+                    os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
+                    ffplay.terminate()
+                    return self.play_stream(track_data)
+
                 if 'n' in command.lower():
                     click.secho('Skipping...', fg='blue')
                     os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
@@ -453,7 +459,7 @@ class pSub(object):
         click.echo('')
         click.secho('   {}   '.format(message), bg='blue', fg='black')
         click.echo('')
-        click.secho('n = Next\nx = Exit', bg='yellow', fg='black')
+        click.secho('n = Next\nb = Beginning\nx = Exit', bg='yellow', fg='black')
         click.echo('')
 
     @staticmethod
@@ -465,20 +471,20 @@ class pSub(object):
         with open(config, 'w+') as config_file:
             config_file.write(
                 """#
-#          _________    ___.    
-#  ______ /   _____/__ _\_ |__  
-#  \____ \\\_____  \|  |  \ __ \ 
+#          _________    ___.
+#  ______ /   _____/__ _\_ |__
+#  \____ \\\_____  \|  |  \ __ \
 #  |  |_> >        \  |  / \_\ \\
 #  |   __/_______  /____/|___  /
-#  |__|          \/          \/ 
+#  |__|          \/          \/
 #
 #
 
-# This section defines the connection to your Subsonic server 
+# This section defines the connection to your Subsonic server
 
 server:
-    # This is the url you would use to access your Subsonic server without the protocol 
-    # (http:// or https://) 
+    # This is the url you would use to access your Subsonic server without the protocol
+    # (http:// or https://)
 
     host: demo.subsonic.org
 
@@ -499,16 +505,16 @@ streaming:
     # The default format is 'raw'
     # this means the original file is streamed from your server
     # and no transcoding takes place.
-    # set this to mp3 or wav etc. 
-    # depending on the transcoders available to your user on the server 
+    # set this to mp3 or wav etc.
+    # depending on the transcoders available to your user on the server
 
     format: raw
 
     # pSub utilises ffplay (https://ffmpeg.org/ffplay.html) to play the streamed media
     # by default the player window is hidden and control takes place through the cli
-    # set this to true to enable the player window. 
-    # It allows for more controls (volume mainly) but will grab the focus of your 
-    # keyboard when tracks change which can be annoying if you are typing 
+    # set this to true to enable the player window.
+    # It allows for more controls (volume mainly) but will grab the focus of your
+    # keyboard when tracks change which can be annoying if you are typing
 
     display: false
 
@@ -519,14 +525,14 @@ streaming:
     # 2: show audio frequency band using RDFT ((Inverse) Real Discrete Fourier Transform)
 
     show_mode: 0
-    
+
     # Artist, Album and Playlist playback can accept a -r/--random flag.
     # by default, setting the flag on the command line means "randomise playback".
     # Setting the following to true will invert that behaviour so that playback is randomised by default
     # and passing the -r flag skips the random shuffle
-    
+
     invert_random: false
-                
+
 """
             )
 
