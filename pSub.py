@@ -2,6 +2,7 @@ import hashlib
 import os
 import string
 import time
+import sys
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
@@ -121,7 +122,11 @@ class pSub(object):
         :param url: full url. see create_url method for details
         :return: Subsonic response or None on failure
         """
-        r = requests.get(url=url)
+        try:
+            r = requests.get(url=url)
+        except requests.exceptions.ConnectionError as e:
+            click.secho('{}'.format(e), fg='red')
+            sys.exit(1)
 
         try:
             response = r.json()
