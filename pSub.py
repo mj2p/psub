@@ -1,6 +1,7 @@
 import hashlib
 import os
 import string
+import sys
 import time
 import sys
 from random import SystemRandom, shuffle
@@ -639,8 +640,8 @@ def radio(psub, search_term):
         click.secho(
             '\n'.join(
                 '{}\t{}'.format(
-                    artist.get('id').ljust(7),
-                    artist.get('name').ljust(30),
+                    str(artist.get('id')).ljust(7),
+                    str(artist.get('name')).ljust(30),
                 ) for artist in results.get('artist', [])
             ),
             fg='yellow'
@@ -680,8 +681,8 @@ def artist(psub, search_term, randomise):
         click.secho(
             '\n'.join(
                 '{}\t{}'.format(
-                    artist.get('id').ljust(7),
-                    artist.get('name').ljust(30),
+                    str(artist.get('id')).ljust(7),
+                    str(artist.get('name')).ljust(30),
                 ) for artist in results.get('artist', [])
             ),
             fg='yellow'
@@ -728,8 +729,8 @@ def album(psub, search_term, randomise):
         click.secho(
             '\n'.join(
                 '{}\t{}\t{}'.format(
-                    album.get('id').ljust(7),
-                    album.get('artist').ljust(30),
+                    str(album.get('id')).ljust(7),
+                    str(album.get('artist')).ljust(30),
                     album.get('name')
                 ) for album in results.get('album', [])
             ),
@@ -775,8 +776,8 @@ def playlist(psub, randomise):
         click.secho(
             '\n'.join(
                 '{}\t{}\t{} tracks'.format(
-                    playlist.get('id').ljust(7),
-                    playlist.get('name').ljust(30),
+                    str(playlist.get('id')).ljust(7),
+                    str(playlist.get('name')).ljust(30),
                     playlist.get('songCount')
                 ) for playlist in playlists
             ),
