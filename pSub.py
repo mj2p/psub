@@ -4,17 +4,12 @@ import string
 import sys
 import time
 import sys
+from datetime import timedelta
 from random import SystemRandom, shuffle
-from subprocess import CalledProcessError, Popen
-from threading import Thread
+from subprocess import CalledProcessError, Popen, call
 
 import requests
 from click import UsageError
-
-try:
-    from queue import LifoQueue
-except ImportError:
-    from Queue import LifoQueue  # noqa
 
 import click
 import yaml
@@ -28,7 +23,6 @@ class pSub(object):
         """
         Load the config, creating it if it doesn't exist.
         Test server connection
-        Start background thread for getting user input during streaming
         :param config: path to config yaml file
         """
         # If no config file exists we should create one and
@@ -53,20 +47,8 @@ class pSub(object):
         # get the streaming config
         streaming_config = config.get('streaming', {})
         self.format = streaming_config.get('format', 'raw')
-        self.display = streaming_config.get('display', False)
-        self.show_mode = streaming_config.get('show_mode', 0)
         self.invert_random = streaming_config.get('invert_random', False)
-
-        # use a Queue to handle command input while a file is playing.
-        # set the thread going now
-        self.input_queue = LifoQueue()
-        input_thread = Thread(target=self.add_input)
-        input_thread.daemon = True
-        input_thread.start()
-
-        # remove the lock file if one exists
-        if os.path.isfile(os.path.join(click.get_app_dir('pSub'), 'play.lock')):
-            os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
+        self.cover_art = streaming_config.get('cover_art', False)
 
     def test_config(self):
         """
@@ -228,7 +210,7 @@ class pSub(object):
 
         return songs
 
-    def play_random_songs(self, music_folder):
+    def play_random_songs(self, music_folder, banner):
         """
         Gather random tracks from the Subsonic server and playthem endlessly
         :param music_folder: integer denoting music folder to filter tracks
@@ -240,23 +222,34 @@ class pSub(object):
 
         playing = True
 
+        width = None
+
         while playing:
             random_songs = self.make_request(url)
 
             if not random_songs:
                 return
 
+            songs = []
+
             for random_song in random_songs['subsonic-response']['randomSongs']['song']:
+                songs.append(random_song)
+
+            for song in songs:
                 if not playing:
                     return
-                playing = self.play_stream(dict(random_song))
+                width = self.draw_player(banner, songs, song, width)
+                playing = self.play_stream(dict(song))
 
-    def play_radio(self, radio_id):
+    def play_radio(self, radio_id, banner):
         """
         Get songs similar to the supplied id and play them endlessly
         :param radio_id: id of Artist
         """
         playing = True
+
+        width = None
+
         while playing:
             similar_songs = self.make_request(
                 '{}&id={}'.format(self.create_url('getSimilarSongs2'), radio_id)
@@ -265,12 +258,18 @@ class pSub(object):
             if not similar_songs:
                 return
 
+            songs = []
+
             for radio_track in similar_songs['subsonic-response']['similarSongs2']['song']:
+                songs.append(radio_track)
+
+            for song in songs:
                 if not playing:
                     return
+                width = self.draw_player(banner, songs, song, width)
                 playing = self.play_stream(dict(radio_track))
 
-    def play_artist(self, artist_id, randomise):
+    def play_artist(self, artist_id, randomise, banner):
         """
         Get the songs by the given artist_id and play them
         :param artist_id:  id of the artist to play
@@ -290,17 +289,21 @@ class pSub(object):
 
         playing = True
 
+        width = None
+
         while playing:
             for song in songs:
                 if not playing:
                     return
+                width = self.draw_player(banner, songs, song, width)
                 playing = self.play_stream(dict(song))
 
-    def play_album(self, album_id, randomise):
+    def play_album(self, album_id, randomise, banner):
         """
         Get the songs for the given album id and play them
         :param album_id:
         :param randomise:
+        :param banner:
         :return:
         """
 
@@ -312,15 +315,13 @@ class pSub(object):
         if randomise:
             shuffle(songs)
 
-        playing = True
+        width = None
 
-        while playing:
-            for song in songs:
-                if not playing:
-                    return
-                playing = self.play_stream(dict(song))
+        for song in songs:
+            width = self.draw_player(banner, songs, song, width)
+            self.play_stream(dict(song))
 
-    def play_playlist(self, playlist_id, randomise):
+    def play_playlist(self, playlist_id, randomise, banner):
         """
         Get the tracks from the supplied playlist id and play them
         :param playlist_id:
@@ -340,132 +341,149 @@ class pSub(object):
 
         playing = True
 
+        width = None
+
         while playing:
             for song in songs:
                 if not playing:
                     return
+                width = self.draw_player(banner, songs, song, width)
                 playing = self.play_stream(dict(song))
 
     def play_stream(self, track_data):
         """
-        Given track data, generate the stream url and pass it to ffplay to handle.
+        Given track data, generate the stream url and pass it to mpv to handle.
         While stream is playing allow user input to control playback
         :param track_data: dict
         :return:
         """
-        stream_url = self.create_url('download')
+        stream_url = self.create_url('stream')
         song_id = track_data.get('id')
 
         if not song_id:
             return False
 
-        click.secho(
-            '{} by {}'.format(
-                track_data.get('title', ''),
-                track_data.get('artist', '')
-            ),
-            fg='green'
-        )
-
         self.scrobble(song_id)
 
         params = [
-            'ffplay',
-            '-i',
-            '{}&id={}&format={}'.format(stream_url, song_id, self.format),
-            '-showmode',
-            '{}'.format(self.show_mode),
-            '-window_title',
-            '{} by {}'.format(
-                track_data.get('title', ''),
-                track_data.get('artist', '')
-            ),
-            '-autoexit',
-            '-hide_banner',
-            '-x',
-            '500',
-            '-y',
-            '500',
-            '-loglevel',
-            'fatal',
+            'mpv',
+            '--no-audio-display',
+            '--really-quiet',
+            '{}&id={}&format={}'.format(stream_url, song_id, self.format)
         ]
 
-        if not self.display:
-            params += ['-nodisp']
-
         try:
-            ffplay = Popen(params)
+            mpv = Popen(params, shell=False, universal_newlines=True)
 
             has_finished = None
-            open(os.path.join(click.get_app_dir('pSub'), 'play.lock'), 'w+').close()
 
             while has_finished is None:
-                has_finished = ffplay.poll()
-                if self.input_queue.empty():
-                    time.sleep(1)
-                    continue
+                has_finished = mpv.poll()
+                time.sleep(.01)
 
-                command = self.input_queue.get_nowait()
-                self.input_queue.queue.clear()
-
-                if 'x' in command.lower():
-                    click.secho('Exiting!', fg='blue')
-                    os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
-                    ffplay.terminate()
-                    return False
-
-                if 'b' in command.lower():
-                    click.secho('Restarting Track....', fg='blue')
-                    os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
-                    ffplay.terminate()
-                    return self.play_stream(track_data)
-
-                if 'n' in command.lower():
-                    click.secho('Skipping...', fg='blue')
-                    os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
-                    ffplay.terminate()
-                    return True
-
-            os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
             return True
 
         except OSError:
             click.secho(
-                'Could not run ffplay. Please make sure it is installed',
+                'Could not run mpv. Please make sure it is installed',
                 fg='red'
             )
             click.launch('https://ffmpeg.org/download.html')
             return False
         except CalledProcessError as e:
             click.secho(
-                'ffplay existed unexpectedly with the following error: {}'.format(e),
+                'mpv existed unexpectedly with the following error: {}'.format(e),
                 fg='red'
             )
             return False
 
-    def add_input(self):
+    def show_cover_art(self, album_id):
         """
-        This method runs in a separate thread (started in __init__).
-        When the play.lock file exists it waits for user input and wrties it to a Queue.
-        The play_stream method above deals with the user input when it occurs
+        Render the album cover art in the terminal. Needs kitty terminal.
+        :param album_id: int
         """
-        while True:
-            if not os.path.isfile(os.path.join(click.get_app_dir('pSub'), 'play.lock')):
-                continue
-            time.sleep(1)
-            self.input_queue.put(click.prompt('', prompt_suffix=''))
+        url = '{}&id=al-{}&size=500'.format(self.create_url('getCoverArt'), album_id)
+        call('curl -s "{}" | kitty +kitten icat --align center'.format(url), shell=True)
+        click.echo('')
+
+    def draw_player(self, banner, songs, current_song, old_width):
+        """
+        Give banner message, track data and current track and draw a pretty player with album art
+        :param banner: str
+        :param songs: dict
+        :param current_song: dict
+        :return:
+        """
+        # Set the winow title
+        sys.stdout.write('\x1b]2;{} - {} - pSub\x07'.format(
+            current_song['title'],
+            current_song['artist']
+        ))
+
+        width = int(os.get_terminal_size().columns)
+
+        offset = ' ' * int(width / 6)
+        line_limit = width - len(offset)
+
+        if width != old_width:
+            click.clear()
+
+        self.show_banner(banner, width)
+
+        if self.cover_art and 'kitty' in os.environ.get('TERM', ''):
+            self.show_cover_art(current_song['albumId'])
+
+        click.secho('{}Tracklist:'.format(offset), fg='yellow')
+        click.echo('')
+
+        for song in songs:
+            # Highlight the current track
+            if song['id'] == current_song['id']:
+                click.secho(
+                    '{}    {} by {}'.format(
+                        offset,
+                        dict(song).get('title', ''),
+                        dict(song).get('artist', '')
+                    )[0:line_limit],
+                    fg='cyan'
+                )
+            else:
+                click.secho(
+                    '{}    {} by {}'.format(
+                        offset,
+                        dict(song).get('title', ''),
+                        dict(song).get('artist', '')
+                    )[0:line_limit],
+                    fg='green'
+                )
+
+        click.echo('')
+
+        click.secho(
+            '{}Current track: {} | {} | {} | {} '.format(
+                offset,
+                str(timedelta(seconds=dict(current_song).get('duration', 0))),
+                dict(current_song).get('year', ''),
+                str(dict(current_song).get('bitRate', '')) + 'kbps',
+                dict(current_song).get('suffix', '')
+            )[0:line_limit],
+            fg='cyan',
+            nl=False
+        )
+        return width
 
     @staticmethod
-    def show_banner(message):
+    def show_banner(message, width):
         """
         Show a standardized banner with custom message and controls for playback
         :param message:
         """
-        click.clear()
-        click.echo('')
-        click.secho('   {}   '.format(message), bg='blue', fg='black')
-        click.echo('')
-        click.secho('n = Next\nb = Beginning\nx = Exit', bg='yellow', fg='black')
+        offset = ' ' * int(width / 6)
+        # Move the cursor to the top of the screen
+        print('\033[;H')
+        # click.echo('        ', nl=False)
+        banner = click.style('   {}   '.format(message), bg='blue', fg='black')
+        click.echo('{}{}'.format(offset, banner))
         click.echo('')
 
     @staticmethod
@@ -516,22 +534,6 @@ streaming:
 
     format: raw
 
-    # pSub utilises ffplay (https://ffmpeg.org/ffplay.html) to play the streamed media
-    # by default the player window is hidden and control takes place through the cli
-    # set this to true to enable the player window.
-    # It allows for more controls (volume mainly) but will grab the focus of your
-    # keyboard when tracks change which can be annoying if you are typing
-
-    display: false
-
-    # When the player window is shown, choose the default show mode
-    # Options are:
-    # 0: show video or album art
-    # 1: show audio waves
-    # 2: show audio frequency band using RDFT ((Inverse) Real Discrete Fourier Transform)
-
-    show_mode: 0
-
     # Artist, Album and Playlist playback can accept a -r/--random flag.
     # by default, setting the flag on the command line means "randomise playback".
     # Setting the following to true will invert that behaviour so that playback is randomised by default
@@ -539,6 +541,9 @@ streaming:
 
     invert_random: false
 
+    # If you are using kitty terminal, you can have pSub display album cover art
+
+    cover_art: true
 """
             )
 
@@ -624,8 +629,9 @@ def random(psub, music_folder):
             default=0
         )
 
-    psub.show_banner('Playing Random Tracks')
-    psub.play_random_songs(music_folder)
+    banner = 'Playing Random Tracks'
+
+    psub.play_random_songs(music_folder, banner)
 
 
 @cli.command(help='Play endless Radio based on a search')
@@ -657,9 +663,9 @@ def radio(psub, search_term):
         if not radio_id:
             search_term = click.prompt('Enter a new search')
 
-    psub.show_banner('Playing Radio')
+    banner = 'Playing Radio'
 
-    psub.play_radio(radio_id)
+    psub.play_radio(radio_id, banner)
 
 
 @cli.command(help='Play songs from chosen Artist')
@@ -698,16 +704,14 @@ def artist(psub, search_term, randomise):
         if not artist_id:
             search_term = click.prompt('Enter an artist name to search again')
 
-    psub.show_banner(
-        'Playing {} tracks by {}'.format(
-            'randomised' if randomise else '',
-            ''.join(
-                artist.get('name') for artist in results.get('artist', []) if int(artist.get('id')) == int(artist_id)
-            )
+    banner = 'Playing {} tracks by {}'.format(
+        'randomised' if randomise else '',
+        ''.join(
+            artist.get('name') for artist in results.get('artist', []) if int(artist.get('id')) == int(artist_id)
         )
     )
 
-    psub.play_artist(artist_id, randomise)
+    psub.play_artist(artist_id, randomise, banner)
 
 
 @cli.command(help='Play songs from chosen Album')
@@ -747,16 +751,14 @@ def album(psub, search_term, randomise):
         if not album_id:
             search_term = click.prompt('Enter an album name to search again')
 
-    psub.show_banner(
-        'Playing {} tracks from {}'.format(
-            'randomised' if randomise else '',
-            ''.join(
-                album.get('name') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
+    banner = 'Playing {} tracks from {}'.format(
+                'randomised' if randomise else '',
+                ''.join(
+                    album.get('name') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
+                )
             )
-        )
-    )
 
-    psub.play_album(album_id, randomise)
+    psub.play_album(album_id, randomise, banner)
 
 
 @cli.command(help='Play a chosen playlist')
@@ -789,13 +791,11 @@ def playlist(psub, randomise):
             type=int,
         )
 
-    psub.show_banner(
-        'Playing {} tracks from the "{}" playlist'.format(
-            'randomised' if randomise else '',
-            ''.join(
-                playlist.get('name') for playlist in playlists if int(playlist.get('id')) == int(playlist_id)
-            )
+    banner = 'Playing {} tracks from the "{}" playlist'.format(
+        'randomised' if randomise else '',
+        ''.join(
+            playlist.get('name') for playlist in playlists if int(playlist.get('id')) == int(playlist_id)
         )
     )
 
-    psub.play_playlist(playlist_id, randomise)
+    psub.play_playlist(playlist_id, randomise, banner)

@@ -20,7 +20,7 @@ It should run on most operating systems too but this hasn't been tested.
 
 #### Installation
 ##### Dependencies
-pSub uses [ffplay](https://ffmpeg.org/ffplay.html) to handle the streaming of music so that needs to be installed and available as a command line executable before using pSub. (you'll be prompted to download ffplay if pSub can't launch it correctly)
+pSub uses [mpv](https://mpv.io/) to handle the streaming of music so that needs to be installed and available as a command line executable before using pSub. (you'll be prompted to download mpv if pSub can't launch it correctly). Images are displayed if you are using the [kitty](https://sw.kovidgoyal.net/kitty/) terminal and have `cover_art: true` in your config file.
   
 Python, pip and virtualenv also need to be installed
 ##### Instructions
