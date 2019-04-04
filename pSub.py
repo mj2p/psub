@@ -7,9 +7,15 @@ import sys
 from datetime import timedelta
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen, call
+from threading import Thread
 
 import requests
 from click import UsageError
+
+try:
+    from queue import LifoQueue
+except ImportError:
+    from Queue import LifoQueue  # noqa
 
 import click
 import yaml
@@ -23,6 +29,7 @@ class pSub(object):
         """
         Load the config, creating it if it doesn't exist.
         Test server connection
+        Start background thread for getting user input during streaming
         :param config: path to config yaml file
         """
         # If no config file exists we should create one and
@@ -153,17 +160,18 @@ class pSub(object):
             )
         )
 
-    def search(self, query):
+    def search(self, query, search_version='3'):
         """
         search using query and return the result
         :return:
         :param query: search term string
         """
         results = self.make_request(
-            url='{}&query={}'.format(self.create_url('search3'), query)
+            url='{}&query={}&albumCount=1000'.format(self.create_url('search{}'.format(
+                search_version)), query)
         )
         if results:
-            return results['subsonic-response']['searchResult3']
+            return results['subsonic-response']['searchResult{}'.format(search_version)]
         return []
 
     def get_artists(self):
@@ -267,7 +275,7 @@ class pSub(object):
                 if not playing:
                     return
                 width = self.draw_player(banner, songs, song, width)
-                playing = self.play_stream(dict(radio_track))
+                playing = self.play_stream(dict(song))
 
     def play_artist(self, artist_id, randomise, banner):
         """
@@ -725,18 +733,23 @@ def artist(psub, search_term, randomise):
 @pass_pSub
 def album(psub, search_term, randomise):
     album_id = None
-    results = {}
+    results = []
 
     while not album_id:
-        results = psub.search(search_term)
+        results = sorted(
+                # For some reason we get better results with `search2` over `search3`
+                psub.search(search_term, '2')['album'],
+                key=lambda k: k['year']
+        )
         click.secho('Albums', bg='red', fg='black')
         click.secho(
             '\n'.join(
-                '{}\t{}\t{}'.format(
+                '{}\t{}\t{} ({})'.format(
                     str(album.get('id')).ljust(7),
                     str(album.get('artist')).ljust(30),
-                    album.get('name')
-                ) for album in results.get('album', [])
+                    album.get('album'),
+                    str(album.get('year'))
+                ) for album in results
             ),
             fg='yellow'
         )
@@ -754,7 +767,7 @@ def album(psub, search_term, randomise):
     banner = 'Playing {} tracks from {}'.format(
                 'randomised' if randomise else '',
                 ''.join(
-                    album.get('name') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
+                    album.get('album') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
                 )
             )
 
