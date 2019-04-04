@@ -7,15 +7,9 @@ import sys
 from datetime import timedelta
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen, call
-from threading import Thread
 
 import requests
 from click import UsageError
-
-try:
-    from queue import LifoQueue
-except ImportError:
-    from Queue import LifoQueue  # noqa
 
 import click
 import yaml
@@ -29,7 +23,6 @@ class pSub(object):
         """
         Load the config, creating it if it doesn't exist.
         Test server connection
-        Start background thread for getting user input during streaming
         :param config: path to config yaml file
         """
         # If no config file exists we should create one and
