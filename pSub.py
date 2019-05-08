@@ -250,7 +250,8 @@ class pSub(object):
         url = self.create_url('getRandomSongs')
 
         if music_folder != 0:
-            url = '{}&musicFolderId={}'.format(url, music_folder)
+            music_folders = self.get_music_folders()
+            url = '{}&musicFolderId={}'.format(url, music_folders[music_folder-1]["id"])
 
         playing = True
 
@@ -632,7 +633,7 @@ def random(psub, music_folder):
         music_folders = [{'name': 'All', 'id': 0}] + psub.get_music_folders()
         click.secho(
             '\n'.join(
-                '{}\t{}'.format(folder['id'], folder['name']) for folder in music_folders
+                '{}\t{}'.format(music_folders.index(folder), folder['name']) for folder in music_folders
             ),
             fg='yellow'
         )
