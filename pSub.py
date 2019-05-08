@@ -7,6 +7,7 @@ import sys
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
+from packaging import version
 
 import requests
 from click import UsageError
@@ -48,6 +49,7 @@ class pSub(object):
         self.host = server_config.get('host')
         self.username = server_config.get('username', '')
         self.password = server_config.get('password', '')
+        self.api = server_config.get('api', '1.16.0')
         self.ssl = server_config.get('ssl', False)
 
         # get the streaming config
@@ -105,14 +107,26 @@ class pSub(object):
         :param endpoint: REST endpoint to incorporate in the url
         """
         token, salt = self.hash_password()
-        url = '{}://{}/rest/{}?u={}&t={}&s={}&v=1.16.0&c=pSub&f=json'.format(
+        if version.parse(self.api) < version.parse("1.13.0"):
+            url = '{}://{}/rest/{}.view?u={}&p={}&v={}&c=pSub&f=json'.format(
+                'https' if self.ssl else 'http',
+                self.host,
+                endpoint,
+                self.username,
+                self.password,
+                self.api
+            )
+        else:
+            url = '{}://{}/rest/{}?u={}&t={}&s={}&v={}&c=pSub&f=json'.format(
             'https' if self.ssl else 'http',
             self.host,
             endpoint,
             self.username,
             token,
-            salt
+            salt,
+            self.api
         )
+            
         return url
 
     @staticmethod
@@ -503,6 +517,9 @@ server:
 
     ssl: false
 
+    # If you use a server with a specific API version set it here
+    
+    api: 1.9.0
 
 # This section defines the playback of music by pSub
 
