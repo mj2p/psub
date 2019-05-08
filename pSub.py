@@ -318,7 +318,6 @@ class pSub(object):
         :param randomise:
         :return:
         """
-
         songs = self.get_album_tracks(album_id)
 
         if self.invert_random:
@@ -747,7 +746,7 @@ def album(psub, search_term, randomise):
         click.secho(
             '\n'.join(
                 '{}\t{}\t{}'.format(
-                    str(album.get('id')).ljust(7),
+                    str(results.get('album', []).index(album)+1).ljust(7),
                     str(album.get('artist')).ljust(30),
                     album.get('name')
                 ) for album in results.get('album', [])
@@ -766,15 +765,16 @@ def album(psub, search_term, randomise):
             search_term = click.prompt('Enter an album name to search again')
 
     psub.show_banner(
-        'Playing {} tracks from {}'.format(
-            'randomised' if randomise else '',
+        'Playing {}tracks from {} '.format(
+            'randomised ' if randomise else '',
             ''.join(
-                album.get('name') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
+                album.get('name') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1
             )
         )
     )
-
-    psub.play_album(album_id, randomise)
+    print(album.get('id') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1)
+    sys.exit(0)
+    psub.play_album((album.get('id') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1), randomise)
 
 
 @cli.command(help='Play a chosen playlist')
