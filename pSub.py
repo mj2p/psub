@@ -52,6 +52,9 @@ class pSub(object):
         self.api = server_config.get('api', '1.16.0')
         self.ssl = server_config.get('ssl', False)
 
+        # internal variables
+        self.search_results = []
+
         # get the streaming config
         streaming_config = config.get('streaming', {})
         self.format = streaming_config.get('format', 'raw')
@@ -692,13 +695,15 @@ def artist(psub, search_term, randomise):
     artist_id = None
     results = {}
 
-    while not artist_id:
+    while artist_id is None:
         results = psub.search(search_term)
+        for art in results.get('artist', []):
+            psub.search_results.append(art.get('id'))
         click.secho('Artists', bg='red', fg='black')
         click.secho(
             '\n'.join(
                 '{}\t{}'.format(
-                    str(artist.get('id')).ljust(7),
+                    str(psub.search_results.index(artist.get('id'))).ljust(7),
                     str(artist.get('name')).ljust(30),
                 ) for artist in results.get('artist', [])
             ),
@@ -709,22 +714,23 @@ def artist(psub, search_term, randomise):
             'Enter an id to start or Enter to search again',
             default=0,
             type=int,
-            show_default=False
+            show_default=True
         )
-
-        if not artist_id:
+        if artist_id+1 > len(psub.search_results):
             search_term = click.prompt('Enter an artist name to search again')
+            artist_id = None
+            psub.search_results = []
 
     psub.show_banner(
         'Playing {} tracks by {}'.format(
             'randomised' if randomise else '',
             ''.join(
-                artist.get('name') for artist in results.get('artist', []) if int(artist.get('id')) == int(artist_id)
+                artist.get('name') for artist in results.get('artist', []) if artist.get('id') == psub.search_results[artist_id]
             )
         )
     )
 
-    psub.play_artist(artist_id, randomise)
+    psub.play_artist(psub.search_results[artist_id], randomise)
 
 
 @cli.command(help='Play songs from chosen Album')
