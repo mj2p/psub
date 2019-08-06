@@ -8,8 +8,9 @@ setup(
         'click',
         'colorama',
         'pyyaml',
-        'requests[security]',
         'packaging',
+        'requests[security]',
+        'questionary'
     ],
     entry_points='''
         [console_scripts]

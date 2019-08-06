@@ -3,14 +3,14 @@ import os
 import string
 import sys
 import time
-import sys
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
-from packaging import version
 
+import questionary
 import requests
 from click import UsageError
+from packaging import version
 
 try:
     from queue import LifoQueue
@@ -99,7 +99,7 @@ class pSub(object):
         return random salted md5 hash of password
         """
         characters = string.ascii_uppercase + string.ascii_lowercase + string.digits
-        salt = ''.join(SystemRandom().choice(characters) for i in range(9))
+        salt = ''.join(SystemRandom().choice(characters) for i in range(9))  # noqa
         salted_password = self.password + salt
         token = hashlib.md5(salted_password.encode('utf-8')).hexdigest()
         return token, salt
@@ -253,8 +253,7 @@ class pSub(object):
         url = self.create_url('getRandomSongs')
 
         if music_folder != 0:
-            music_folders = self.get_music_folders()
-            url = '{}&musicFolderId={}'.format(url, music_folders[music_folder-1]["id"])
+            url = '{}&musicFolderId={}'.format(url, music_folder)
 
         playing = True
 
@@ -578,7 +577,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     invoke_without_command=True,
     context_settings=CONTEXT_SETTINGS
 )
-@click.pass_context
 @click.option(
     '--config',
     '-c',
@@ -591,6 +589,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     is_flag=True,
     help='Test the server configuration'
 )
+@click.pass_context
 def cli(ctx, config, test):
     if not os.path.exists(click.get_app_dir('pSub')):
         os.mkdir(click.get_app_dir('pSub'))
@@ -633,16 +632,11 @@ pass_pSub = click.make_pass_decorator(pSub)
 def random(psub, music_folder):
     if not music_folder:
         music_folders = [{'name': 'All', 'id': 0}] + psub.get_music_folders()
-        click.secho(
-            '\n'.join(
-                '{}\t{}'.format(music_folders.index(folder), folder['name']) for folder in music_folders
-            ),
-            fg='yellow'
-        )
-        music_folder = click.prompt(
-            'Choose a music folder from the options above',
-            default=0
-        )
+        chosen_folder = questionary.select(
+            "Choose a music folder to play random tracks from",
+            choices=[folder.get('name') for folder in music_folders]
+        ).ask()
+        music_folder = next(folder.get('id') for folder in music_folders if folder.get('name') == chosen_folder)
 
     psub.show_banner('Playing Random Tracks')
     psub.play_random_songs(music_folder)
@@ -651,35 +645,34 @@ def random(psub, music_folder):
 @cli.command(help='Play endless Radio based on a search')
 @click.argument('search_term')
 @pass_pSub
-def radio(psub, search_term):
-    radio_id = None
+@click.pass_context
+def radio(ctx, psub, search_term):
+    results = psub.search(search_term).get('artist', [])
 
-    while not radio_id:
-        results = psub.search(search_term)
-        click.secho('Artists', bg='red', fg='black')
-        click.secho(
-            '\n'.join(
-                '{}\t{}'.format(
-                    str(artist.get('id')).ljust(7),
-                    str(artist.get('name')).ljust(30),
-                ) for artist in results.get('artist', [])
-            ),
-            fg='yellow'
-        )
+    if len(results) > 0:
+        chosen_artist = questionary.select(
+            "Choose an Artist to start a Radio play, or 'Search Again' to search again",
+            choices=[artist.get('name') for artist in results] + ['Search Again']
+        ).ask()
+    else:
+        click.secho('No Artists found matching {}'.format(search_term), fg='red', color=True)
+        chosen_artist = 'Search Again'
 
-        radio_id = click.prompt(
-            'Enter an id to start radio or Enter to search again',
-            type=int,
-            default=0,
-            show_default=False
-        )
+    if chosen_artist == 'Search Again':
+        search_term = questionary.text("Enter a new search term").ask()
 
-        if not radio_id:
-            search_term = click.prompt('Enter a new search')
+        if not search_term:
+            sys.exit(0)
 
-    psub.show_banner('Playing Radio')
+        ctx.invoke(radio, search_term=search_term)
+    else:
+        radio_artist = next((art for art in results if art.get('name') == chosen_artist), None)
 
-    psub.play_radio(radio_id)
+        if radio_artist is None:
+            sys.exit(0)
+
+        psub.show_banner('Playing Radio based on {}'.format(radio_artist.get('name')))
+        psub.play_radio(radio_artist.get('id'))
 
 
 @cli.command(help='Play songs from chosen Artist')
@@ -691,46 +684,39 @@ def radio(psub, search_term):
     help='Randomise the order of track playback',
 )
 @pass_pSub
-def artist(psub, search_term, randomise):
-    artist_id = None
-    results = {}
+@click.pass_context
+def artist(ctx, psub, search_term, randomise):
+    results = psub.search(search_term).get('artist', [])
 
-    while artist_id is None:
-        results = psub.search(search_term)
-        for art in results.get('artist', []):
-            psub.search_results.append(art.get('id'))
-        click.secho('Artists', bg='red', fg='black')
-        click.secho(
-            '\n'.join(
-                '{}\t{}'.format(
-                    str(psub.search_results.index(artist.get('id'))).ljust(7),
-                    str(artist.get('name')).ljust(30),
-                ) for artist in results.get('artist', [])
-            ),
-            fg='yellow'
-        )
+    if len(results) > 0:
+        chosen_artist = questionary.select(
+            "Choose an Artist, or 'Search Again' to search again",
+            choices=[artist.get('name') for artist in results] + ['Search Again']
+        ).ask()
+    else:
+        click.secho('No artists found matching "{}"'.format(search_term), fg='red', color=True)
+        chosen_artist = 'Search Again'
 
-        artist_id = click.prompt(
-            'Enter an id to start or Enter to search again',
-            default=0,
-            type=int,
-            show_default=True
-        )
-        if artist_id+1 > len(psub.search_results):
-            search_term = click.prompt('Enter an artist name to search again')
-            artist_id = None
-            psub.search_results = []
+    if chosen_artist == 'Search Again':
+        search_term = questionary.text("Enter a new search term").ask()
 
-    psub.show_banner(
-        'Playing {} tracks by {}'.format(
-            'randomised' if randomise else '',
-            ''.join(
-                artist.get('name') for artist in results.get('artist', []) if artist.get('id') == psub.search_results[artist_id]
+        if not search_term:
+            sys.exit(0)
+
+        ctx.invoke(artist, search_term=search_term, randomise=randomise)
+    else:
+        play_artist = next((art for art in results if art.get('name') == chosen_artist), None)
+
+        if play_artist is None:
+            sys.exit(0)
+
+        psub.show_banner(
+            'Playing {}tracks by {}'.format(
+                'randomised ' if randomise else '',
+                play_artist.get('name')
             )
         )
-    )
-
-    psub.play_artist(psub.search_results[artist_id], randomise)
+        psub.play_artist(play_artist.get('id'), randomise)
 
 
 @cli.command(help='Play songs from chosen Album')
@@ -742,45 +728,39 @@ def artist(psub, search_term, randomise):
     help='Randomise the order of track playback',
 )
 @pass_pSub
-def album(psub, search_term, randomise):
-    album_id = None
-    results = {}
+@click.pass_context
+def album(ctx, psub, search_term, randomise):
+    results = psub.search(search_term).get('album', [])
 
-    while not album_id:
-        results = psub.search(search_term)
-        click.secho('Albums', bg='red', fg='black')
-        click.secho(
-            '\n'.join(
-                '{}\t{}\t{}'.format(
-                    str(results.get('album', []).index(album)+1).ljust(7),
-                    str(album.get('artist')).ljust(30),
-                    album.get('name')
-                ) for album in results.get('album', [])
-            ),
-            fg='yellow'
-        )
+    if len(results) > 0:
+        chosen_album = questionary.select(
+            "Choose an Album, or 'Search Again' to search again",
+            choices=[album.get('name') for album in results] + ['Search Again']
+        ).ask()
+    else:
+        click.secho('No albums found matching "{}"'.format(search_term), fg='red', color=True)
+        chosen_album = 'Search Again'
 
-        album_id = click.prompt(
-            'Enter an id to start or Enter to search again',
-            type=int,
-            default=0,
-            show_default=False
-        )
+    if chosen_album == 'Search Again':
+        search_term = questionary.text("Enter a new search term").ask()
 
-        if not album_id:
-            search_term = click.prompt('Enter an album name to search again')
+        if not search_term:
+            sys.exit(0)
 
-    psub.show_banner(
-        'Playing {}tracks from {} '.format(
-            'randomised ' if randomise else '',
-            ''.join(
-                album.get('name') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1
+        ctx.invoke(album, search_term=search_term, randomise=randomise)
+    else:
+        play_album = next((alb for alb in results if alb.get('name') == chosen_album), None)
+
+        if play_album is None:
+            sys.exit(0)
+
+        psub.show_banner(
+            'Playing {}tracks from {} '.format(
+                'randomised ' if randomise else '',
+                play_album.get('name')
             )
         )
-    )
-    print(album.get('id') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1)
-    sys.exit(0)
-    psub.play_album((album.get('id') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1), randomise)
+        psub.play_album(play_album.get('id'), randomise)
 
 
 @cli.command(help='Play a chosen playlist')
@@ -792,34 +772,27 @@ def album(psub, search_term, randomise):
 )
 @pass_pSub
 def playlist(psub, randomise):
-    playlist_id = None
+    playlists = psub.get_playlists()
 
-    while not playlist_id:
-        playlists = psub.get_playlists()
-        click.secho('Playlists', bg='red', fg='black')
-        click.secho(
-            '\n'.join(
-                '{}\t{}\t{} tracks'.format(
-                    str(playlist.get('id')).ljust(7),
-                    str(playlist.get('name')).ljust(30),
-                    playlist.get('songCount')
-                ) for playlist in playlists
-            ),
-            fg='yellow'
-        )
+    if len(playlists) > 0:
+        chosen_playlist = questionary.select(
+            "Choose a Playlist, or 'Search Again' to search again",
+            choices=[plist.get('name') for plist in playlists] + ['Search Again']
+        ).ask()
+    else:
+        click.secho('No playlists found', fg='red', color=True)
+        sys.exit(0)
 
-        playlist_id = click.prompt(
-            'Enter an id to start',
-            type=int,
-        )
+    play_list = next((plist for plist in playlists if plist.get('name') == chosen_playlist), None)
+
+    if play_list is None:
+        sys.exit(0)
 
     psub.show_banner(
         'Playing {} tracks from the "{}" playlist'.format(
             'randomised' if randomise else '',
-            ''.join(
-                playlist.get('name') for playlist in playlists if int(playlist.get('id')) == int(playlist_id)
-            )
+            play_list.get('name')
         )
     )
 
-    psub.play_playlist(playlist_id, randomise)
+    psub.play_playlist(play_list.get('id'), randomise)
