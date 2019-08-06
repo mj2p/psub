@@ -7,6 +7,7 @@ import sys
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
+from packaging import version
 
 import requests
 from click import UsageError
@@ -48,7 +49,11 @@ class pSub(object):
         self.host = server_config.get('host')
         self.username = server_config.get('username', '')
         self.password = server_config.get('password', '')
+        self.api = server_config.get('api', '1.16.0')
         self.ssl = server_config.get('ssl', False)
+
+        # internal variables
+        self.search_results = []
 
         # get the streaming config
         streaming_config = config.get('streaming', {})
@@ -105,14 +110,26 @@ class pSub(object):
         :param endpoint: REST endpoint to incorporate in the url
         """
         token, salt = self.hash_password()
-        url = '{}://{}/rest/{}?u={}&t={}&s={}&v=1.16.0&c=pSub&f=json'.format(
+        if version.parse(self.api) < version.parse("1.13.0"):
+            url = '{}://{}/rest/{}.view?u={}&p={}&v={}&c=pSub&f=json'.format(
+                'https' if self.ssl else 'http',
+                self.host,
+                endpoint,
+                self.username,
+                self.password,
+                self.api
+            )
+        else:
+            url = '{}://{}/rest/{}?u={}&t={}&s={}&v={}&c=pSub&f=json'.format(
             'https' if self.ssl else 'http',
             self.host,
             endpoint,
             self.username,
             token,
-            salt
+            salt,
+            self.api
         )
+            
         return url
 
     @staticmethod
@@ -236,7 +253,8 @@ class pSub(object):
         url = self.create_url('getRandomSongs')
 
         if music_folder != 0:
-            url = '{}&musicFolderId={}'.format(url, music_folder)
+            music_folders = self.get_music_folders()
+            url = '{}&musicFolderId={}'.format(url, music_folders[music_folder-1]["id"])
 
         playing = True
 
@@ -303,7 +321,6 @@ class pSub(object):
         :param randomise:
         :return:
         """
-
         songs = self.get_album_tracks(album_id)
 
         if self.invert_random:
@@ -503,6 +520,9 @@ server:
 
     ssl: false
 
+    # If you use a server with a specific API version set it here
+    
+    api: 
 
 # This section defines the playback of music by pSub
 
@@ -615,7 +635,7 @@ def random(psub, music_folder):
         music_folders = [{'name': 'All', 'id': 0}] + psub.get_music_folders()
         click.secho(
             '\n'.join(
-                '{}\t{}'.format(folder['id'], folder['name']) for folder in music_folders
+                '{}\t{}'.format(music_folders.index(folder), folder['name']) for folder in music_folders
             ),
             fg='yellow'
         )
@@ -675,13 +695,15 @@ def artist(psub, search_term, randomise):
     artist_id = None
     results = {}
 
-    while not artist_id:
+    while artist_id is None:
         results = psub.search(search_term)
+        for art in results.get('artist', []):
+            psub.search_results.append(art.get('id'))
         click.secho('Artists', bg='red', fg='black')
         click.secho(
             '\n'.join(
                 '{}\t{}'.format(
-                    str(artist.get('id')).ljust(7),
+                    str(psub.search_results.index(artist.get('id'))).ljust(7),
                     str(artist.get('name')).ljust(30),
                 ) for artist in results.get('artist', [])
             ),
@@ -692,22 +714,23 @@ def artist(psub, search_term, randomise):
             'Enter an id to start or Enter to search again',
             default=0,
             type=int,
-            show_default=False
+            show_default=True
         )
-
-        if not artist_id:
+        if artist_id+1 > len(psub.search_results):
             search_term = click.prompt('Enter an artist name to search again')
+            artist_id = None
+            psub.search_results = []
 
     psub.show_banner(
         'Playing {} tracks by {}'.format(
             'randomised' if randomise else '',
             ''.join(
-                artist.get('name') for artist in results.get('artist', []) if int(artist.get('id')) == int(artist_id)
+                artist.get('name') for artist in results.get('artist', []) if artist.get('id') == psub.search_results[artist_id]
             )
         )
     )
 
-    psub.play_artist(artist_id, randomise)
+    psub.play_artist(psub.search_results[artist_id], randomise)
 
 
 @cli.command(help='Play songs from chosen Album')
@@ -729,7 +752,7 @@ def album(psub, search_term, randomise):
         click.secho(
             '\n'.join(
                 '{}\t{}\t{}'.format(
-                    str(album.get('id')).ljust(7),
+                    str(results.get('album', []).index(album)+1).ljust(7),
                     str(album.get('artist')).ljust(30),
                     album.get('name')
                 ) for album in results.get('album', [])
@@ -748,15 +771,16 @@ def album(psub, search_term, randomise):
             search_term = click.prompt('Enter an album name to search again')
 
     psub.show_banner(
-        'Playing {} tracks from {}'.format(
-            'randomised' if randomise else '',
+        'Playing {}tracks from {} '.format(
+            'randomised ' if randomise else '',
             ''.join(
-                album.get('name') for album in results.get('album', []) if int(album.get('id')) == int(album_id)
+                album.get('name') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1
             )
         )
     )
-
-    psub.play_album(album_id, randomise)
+    print(album.get('id') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1)
+    sys.exit(0)
+    psub.play_album((album.get('id') for album in results.get('album', []) if results.get('album', []).index(album) == album_id-1), randomise)
 
 
 @cli.command(help='Play a chosen playlist')

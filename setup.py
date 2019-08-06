@@ -9,6 +9,7 @@ setup(
         'colorama',
         'pyyaml',
         'requests[security]',
+        'packaging',
     ],
     entry_points='''
         [console_scripts]
