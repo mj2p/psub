@@ -404,6 +404,7 @@ class pSub(object):
             '500',
             '-loglevel',
             'fatal',
+            '-infbuf',
         ]
 
         if not self.display:
