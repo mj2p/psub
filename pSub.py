@@ -6,6 +6,7 @@ import time
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
+from gi.repository import Notify, GdkPixbuf
 
 import questionary
 import requests
@@ -371,6 +372,9 @@ class pSub(object):
         """
         stream_url = self.create_url('download')
         song_id = track_data.get('id')
+        cover_url = self.create_url('getCoverArt')
+        r=requests.get('{}&id={}&size=48'.format(cover_url, song_id))
+        open('/tmp/art.jpg', 'wb').write(r.content)
 
         if not song_id:
             return False
@@ -411,6 +415,8 @@ class pSub(object):
             params += ['-nodisp']
 
         try:
+            image = GdkPixbuf.Pixbuf.new_from_file('/tmp/art.jpg')
+            notification = Notify.Notification.new("Hi")
             ffplay = Popen(params)
 
             has_finished = None
