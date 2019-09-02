@@ -10,7 +10,9 @@ setup(
         'pyyaml',
         'packaging',
         'requests[security]',
-        'questionary'
+        'questionary',
+        'pygobject',
+        'pycairo'
     ],
     entry_points='''
         [console_scripts]
