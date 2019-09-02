@@ -23,6 +23,15 @@ It should run on most operating systems too but this hasn't been tested.
 pSub uses [ffplay](https://ffmpeg.org/ffplay.html) to handle the streaming of music so that needs to be installed and available as a command line executable before using pSub. (you'll be prompted to download ffplay if pSub can't launch it correctly)
   
 Python, pip and virtualenv also need to be installed
+
+For compiling dependencies `gobject-introspection-1.0` is needed.
+The package name varies by distribution:
+
+* Fedora, CentOS, RHEL, etc.: gobject-introspection-devel
+* Debian, Ubuntu, Mint, etc.: libgirepository1.0-dev
+* Arch: gobject-introspection
+* FreeBSD: gobject-introspection
+
 ##### Instructions
 (Tested on Ubuntu, other operating systems may vary)
 - Clone this repo  
