@@ -373,8 +373,16 @@ class pSub(object):
         stream_url = self.create_url('download')
         song_id = track_data.get('id')
         cover_url = self.create_url('getCoverArt')
-        r=requests.get('{}&id={}&size=48'.format(cover_url, song_id))
-        open('/tmp/art.jpg', 'wb').write(r.content)
+        if track_data.get('coverArt') is not None:
+            r=requests.get('{}&id={}&size=96'.format(cover_url, track_data.get('coverArt')))
+            cover=r.content
+        else:
+            cover=open('no_cover.jpg', 'rb')
+            print("no cover found")
+            
+        print(track_data)
+        print('{}&id={}&size=96'.format(cover_url, track_data.get('coverArt')))
+        open('/tmp/art.jpg', 'wb').write(cover)
 
         if not song_id:
             return False
