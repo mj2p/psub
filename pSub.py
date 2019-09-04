@@ -70,6 +70,8 @@ class pSub(object):
         input_thread.daemon = True
         input_thread.start()
 
+        Notify.init("pSub")
+
         # remove the lock file if one exists
         if os.path.isfile(os.path.join(click.get_app_dir('pSub'), 'play.lock')):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
@@ -273,7 +275,7 @@ class pSub(object):
         """
         Get songs similar to the supplied id and play them endlessly
         :param radio_id: id of Artist
-        """
+        """ 
         playing = True
         while playing:
             similar_songs = self.make_request(
@@ -377,11 +379,10 @@ class pSub(object):
             r=requests.get('{}&id={}&size=96'.format(cover_url, track_data.get('coverArt')))
             cover=r.content
         else:
-            cover=open('no_cover.jpg', 'rb')
             print("no cover found")
+            c=open('no_cover.jpg', 'rb')
+            cover=c.read()
             
-        print(track_data)
-        print('{}&id={}&size=96'.format(cover_url, track_data.get('coverArt')))
         open('/tmp/art.jpg', 'wb').write(cover)
 
         if not song_id:
@@ -424,7 +425,10 @@ class pSub(object):
 
         try:
             image = GdkPixbuf.Pixbuf.new_from_file('/tmp/art.jpg')
-            notification = Notify.Notification.new("Hi")
+            notification = Notify.Notification.new(track_data.get('artist'), track_data.get('title'))
+            cover_art = GdkPixbuf.Pixbuf.new_from_file("/tmp/art.jpg")
+            notification.set_image_from_pixbuf(cover_art)
+            notification.show()
             ffplay = Popen(params)
 
             has_finished = None
@@ -574,8 +578,7 @@ streaming:
     invert_random: false
 
 """
-            )
-
+               )
 
 # _________ .____    .___
 # \_   ___ \|    |   |   |
