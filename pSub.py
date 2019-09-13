@@ -6,6 +6,8 @@ import time
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
+import gi
+gi.require_version('Notify', '0.7')
 from gi.repository import Notify, GdkPixbuf
 
 import questionary
@@ -62,6 +64,7 @@ class pSub(object):
         self.display = streaming_config.get('display', False)
         self.show_mode = streaming_config.get('show_mode', 0)
         self.invert_random = streaming_config.get('invert_random', False)
+        self.notify = streaming_config.get('notify', False)
 
         # use a Queue to handle command input while a file is playing.
         # set the thread going now
@@ -376,7 +379,7 @@ class pSub(object):
         song_id = track_data.get('id')
         cover_url = self.create_url('getCoverArt')
         if track_data.get('coverArt') is not None:
-            r=requests.get('{}&id={}&size=96'.format(cover_url, track_data.get('coverArt')))
+            r=requests.get('{}&id={}&size=128'.format(cover_url, track_data.get('coverArt')))
             cover=r.content
         else:
             print("no cover found")
@@ -424,11 +427,12 @@ class pSub(object):
             params += ['-nodisp']
 
         try:
-            image = GdkPixbuf.Pixbuf.new_from_file('/tmp/art.jpg')
-            notification = Notify.Notification.new(track_data.get('artist'), track_data.get('title'))
-            cover_art = GdkPixbuf.Pixbuf.new_from_file("/tmp/art.jpg")
-            notification.set_image_from_pixbuf(cover_art)
-            notification.show()
+            if self.notify:
+                image = GdkPixbuf.Pixbuf.new_from_file('/tmp/art.jpg')
+                notification = Notify.Notification.new(track_data.get('artist'), track_data.get('title'))
+                cover_art = GdkPixbuf.Pixbuf.new_from_file("/tmp/art.jpg")
+                notification.set_image_from_pixbuf(cover_art)
+                notification.show()
             ffplay = Popen(params)
 
             has_finished = None
@@ -576,6 +580,9 @@ streaming:
     # and passing the -r flag skips the random shuffle
 
     invert_random: false
+
+    # Show notifications
+    notify: true
 
 """
                )
