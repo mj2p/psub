@@ -382,7 +382,6 @@ class pSub(object):
             r=requests.get('{}&id={}&size=128'.format(cover_url, track_data.get('coverArt')))
             cover=r.content
         else:
-            print("no cover found")
             c=open('no_cover.jpg', 'rb')
             cover=c.read()
             
