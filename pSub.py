@@ -6,6 +6,7 @@ import time
 from random import SystemRandom, shuffle
 from subprocess import CalledProcessError, Popen
 from threading import Thread
+from typing import Dict, List, Union
 
 import questionary
 import requests
@@ -632,7 +633,7 @@ pass_pSub = click.make_pass_decorator(pSub)
 @pass_pSub
 def random(psub, music_folder):
     if not music_folder:
-        music_folders = [{'name': 'All', 'id': 0}] + psub.get_music_folders()
+        music_folders = get_as_list(psub.get_music_folders()) + [{'name': 'All', 'id': 0}]
         chosen_folder = questionary.select(
             "Choose a music folder to play random tracks from",
             choices=[folder.get('name') for folder in music_folders]
@@ -643,12 +644,18 @@ def random(psub, music_folder):
     psub.play_random_songs(music_folder)
 
 
+def get_as_list(list_inst: Union[List, Dict]) -> List[Dict]:
+    if isinstance(list_inst,dict):
+        list_inst = [list_inst]
+    return list_inst
+
+
 @cli.command(help='Play endless Radio based on a search')
 @click.argument('search_term')
 @pass_pSub
 @click.pass_context
 def radio(ctx, psub, search_term):
-    results = psub.search(search_term).get('artist', [])
+    results = get_as_list(psub.search(search_term).get('artist', []))
 
     if len(results) > 0:
         chosen_artist = questionary.select(
@@ -687,7 +694,7 @@ def radio(ctx, psub, search_term):
 @pass_pSub
 @click.pass_context
 def artist(ctx, psub, search_term, randomise):
-    results = psub.search(search_term).get('artist', [])
+    results = get_as_list(psub.search(search_term).get('artist', []))
 
     if len(results) > 0:
         chosen_artist = questionary.select(
@@ -731,7 +738,7 @@ def artist(ctx, psub, search_term, randomise):
 @pass_pSub
 @click.pass_context
 def album(ctx, psub, search_term, randomise):
-    results = psub.search(search_term).get('album', [])
+    results = get_as_list(psub.search(search_term).get('album', []))
 
     if len(results) > 0:
         chosen_album = questionary.select(
@@ -773,7 +780,7 @@ def album(ctx, psub, search_term, randomise):
 )
 @pass_pSub
 def playlist(psub, randomise):
-    playlists = psub.get_playlists()
+    playlists = get_as_list(psub.get_playlists())
 
     if len(playlists) > 0:
         chosen_playlist = questionary.select(
