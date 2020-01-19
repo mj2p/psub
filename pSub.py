@@ -456,7 +456,7 @@ class pSub(object):
                 f'Could not run ffplay. Please make sure it is installed, {str(err)}',
                 fg='red'
             )
-            # click.launch('https://ffmpeg.org/download.html')
+            click.launch('https://ffmpeg.org/download.html')
             return False
         except CalledProcessError as e:
             click.secho(
@@ -602,10 +602,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def cli(ctx, config, test):
     if not os.path.exists(click.get_app_dir('pSub')):
         os.mkdir(click.get_app_dir('pSub'))
+
     config_file = os.path.join(click.get_app_dir('pSub'), 'config.yaml')
 
     if config:
-        Test = True
+        test = True
 
         try:
             click.edit(filename=config_file, extension='yaml')
