@@ -73,6 +73,8 @@ class pSub(object):
         # remove the lock file if one exists
         if os.path.isfile(os.path.join(click.get_app_dir('pSub'), 'play.lock')):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
+        client_config = config.get('client', {})
+        self.pre_exe = client_config.get('pre_exe', '').split(' ')
 
     def test_config(self):
         """
@@ -408,6 +410,8 @@ class pSub(object):
             '-infbuf',
         ]
 
+        params = self.pre_exe + params
+
         if not self.display:
             params += ['-nodisp']
 
@@ -447,12 +451,12 @@ class pSub(object):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
             return True
 
-        except OSError:
+        except OSError as err:
             click.secho(
-                'Could not run ffplay. Please make sure it is installed',
+                f'Could not run ffplay. Please make sure it is installed, {str(err)}',
                 fg='red'
             )
-            click.launch('https://ffmpeg.org/download.html')
+            # click.launch('https://ffmpeg.org/download.html')
             return False
         except CalledProcessError as e:
             click.secho(
@@ -560,6 +564,9 @@ streaming:
 
     invert_random: false
 
+client:
+    # Added extra client config for pre-exe commands, like using it in flatpak-spawn
+    pre_exe: ''
 """
             )
 
@@ -595,11 +602,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 def cli(ctx, config, test):
     if not os.path.exists(click.get_app_dir('pSub')):
         os.mkdir(click.get_app_dir('pSub'))
-
     config_file = os.path.join(click.get_app_dir('pSub'), 'config.yaml')
 
     if config:
-        test = True
+        Test = True
 
         try:
             click.edit(filename=config_file, extension='yaml')
