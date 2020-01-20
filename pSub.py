@@ -74,7 +74,8 @@ class pSub(object):
         if os.path.isfile(os.path.join(click.get_app_dir('pSub'), 'play.lock')):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
         client_config = config.get('client', {})
-        self.pre_exe = client_config.get('pre_exe', '').split(' ')
+        self.pre_exe = client_config.get('pre_exe', '')
+        self.pre_exe = self.pre_exe.split(' ') if self.pre_exe is not '' else []
 
     def test_config(self):
         """
@@ -410,8 +411,8 @@ class pSub(object):
             '-infbuf',
         ]
 
-        params = self.pre_exe + params
-
+        params = self.pre_exe + params if len(self.pre_exe) > 0 else params
+        
         if not self.display:
             params += ['-nodisp']
 
