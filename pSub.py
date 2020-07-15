@@ -73,6 +73,9 @@ class pSub(object):
         # remove the lock file if one exists
         if os.path.isfile(os.path.join(click.get_app_dir('pSub'), 'play.lock')):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
+        client_config = config.get('client', {})
+        self.pre_exe = client_config.get('pre_exe', '')
+        self.pre_exe = self.pre_exe.split(' ') if self.pre_exe is not '' else []
 
     def test_config(self):
         """
@@ -408,6 +411,8 @@ class pSub(object):
             '-infbuf',
         ]
 
+        params = self.pre_exe + params if len(self.pre_exe) > 0 else params
+        
         if not self.display:
             params += ['-nodisp']
 
@@ -447,9 +452,9 @@ class pSub(object):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
             return True
 
-        except OSError:
+        except OSError as err:
             click.secho(
-                'Could not run ffplay. Please make sure it is installed',
+                f'Could not run ffplay. Please make sure it is installed, {str(err)}',
                 fg='red'
             )
             click.launch('https://ffmpeg.org/download.html')
@@ -560,6 +565,9 @@ streaming:
 
     invert_random: false
 
+client:
+    # Added extra client config for pre-exe commands, like using it in flatpak-spawn
+    pre_exe: ''
 """
             )
 
