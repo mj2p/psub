@@ -256,8 +256,8 @@ class pSub(object):
         :param music_folder: integer denoting music folder to filter tracks
         """
         url = self.create_url('getRandomSongs')
-
-        if music_folder != 0:
+        
+        if music_folder is not None:
             url = '{}&musicFolderId={}'.format(url, music_folder)
 
         playing = True
@@ -643,7 +643,8 @@ pass_pSub = click.make_pass_decorator(pSub)
 @pass_pSub
 def random(psub, music_folder):
     if not music_folder:
-        music_folders = get_as_list(psub.get_music_folders()) + [{'name': 'All', 'id': 0}]
+        music_folders = get_as_list(psub.get_music_folders()) + [{'name': 'All', 'id': None}]
+        
         chosen_folder = questionary.select(
             "Choose a music folder to play random tracks from",
             choices=[folder.get('name') for folder in music_folders]
