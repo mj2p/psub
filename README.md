@@ -22,22 +22,30 @@ It should run on most operating systems too but this hasn't been tested.
 ##### Dependencies
 pSub uses [ffplay](https://ffmpeg.org/ffplay.html) to handle the streaming of music so that needs to be installed and available as a command line executable before using pSub. (you'll be prompted to download ffplay if pSub can't launch it correctly)
   
-Python, pip and virtualenv also need to be installed
+Python3.8 and pipenv need to be installed
+
+For compiling, some additional dependencies are required (install them with your system package manager; atpt, yum, pacman etc.):
+The package names vary by distribution:
+
+* Fedora, CentOS, RHEL, etc.: gobject-introspection-devel cairo-devel pkg-config python3-devel
+* Debian, Ubuntu, Mint, etc.: libgirepository1.0-dev libcairo2-dev pkg-config python3-dev
+* Arch: gobject-introspection cairo pkgconf
+
+The dependencies are [PyGObject](https://pygobject.readthedocs.io/) and [Pycairo](https://pycairo.readthedocs.io/). 
+See their websites for more info if the instruction above are out of date.
+
+
 ##### Instructions
-(Tested on Ubuntu, other operating systems may vary)
 - Clone this repo  
 `git clone github.com/inuitwallet/psub.git`
 - Enter the pSub directory  
 `cd psub`
-- Create a virtualenv  
-`virtualenv ve`  
-or  
-`python3 -m venv ve`  
-- Install pSub  
-`ve/bin/pip install .`
+- Sync the dependencies  
+`pipenv sync`
+- Copy the psub binary to `/usr/bin` to allow for running pSub from any other directory   
+`sudo cp $(pipenv --venv)/bin/pSub /usr/bin/psub`
 - Run pSub  
-`ve/bin/pSub`  
-
+`psub`
 
 #### Usage
 On first run you will be prompted to edit your config file. pSub will install a default config file and then open it for editing in your default text editor. You need to specify the url, username and password of your Subsonic server at a minimum.  

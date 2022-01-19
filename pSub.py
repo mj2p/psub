@@ -62,7 +62,7 @@ class pSub(object):
         self.display = streaming_config.get('display', False)
         self.show_mode = streaming_config.get('show_mode', 0)
         self.invert_random = streaming_config.get('invert_random', False)
-        self.notify = streaming_config.get('notify', False)
+        self.notify = streaming_config.get('notify', True)
 
         if self.notify:
             import notifications
@@ -574,6 +574,12 @@ streaming:
     # and passing the -r flag skips the random shuffle
 
     invert_random: false
+    
+    # pSub can use system notifications to alert you to a song change.
+    # it will show you the details of the currently playing song.
+    # to disable notification, set this to false
+    
+    notify: true
 
 client:
     # Added extra client config for pre-exe commands, like using it in flatpak-spawn
