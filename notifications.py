@@ -1,5 +1,6 @@
 import gi
 import requests
+import os
 gi.require_version('Notify', '0.7')
 from gi.repository import Notify, GdkPixbuf
 
@@ -18,7 +19,7 @@ class Notifications(object):
             )
             cover = r.content
         else:
-            c = open('no_cover.jpg', 'rb')
+            c = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'no_cover.jpg'), 'rb')
             cover = c.read()
 
         open('/tmp/art.jpg', 'wb').write(cover)
