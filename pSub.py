@@ -538,7 +538,7 @@ server:
 
     # If you use a server with a specific API version set it here
     
-    api: 
+    api: 1.16.0
 
 # This section defines the playback of music by pSub
 
