@@ -80,7 +80,7 @@ class pSub(object):
             os.remove(os.path.join(click.get_app_dir('pSub'), 'play.lock'))
         client_config = config.get('client', {})
         self.pre_exe = client_config.get('pre_exe', '')
-        self.pre_exe = self.pre_exe.split(' ') if self.pre_exe is not '' else []
+        self.pre_exe = self.pre_exe.split(' ') if self.pre_exe != '' else []
 
     def test_config(self):
         """
