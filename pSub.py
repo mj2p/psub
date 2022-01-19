@@ -13,13 +13,12 @@ import requests
 from click import UsageError
 from packaging import version
 
-try:
-    from queue import LifoQueue
-except ImportError:
-    from Queue import LifoQueue  # noqa
+from queue import LifoQueue
 
 import click
 import yaml
+import urllib3
+urllib3.disable_warnings()
 
 
 class pSub(object):
@@ -52,6 +51,7 @@ class pSub(object):
         self.password = server_config.get('password', '')
         self.api = server_config.get('api', '1.16.0')
         self.ssl = server_config.get('ssl', False)
+        self.verify_ssl = server_config.get('verify_ssl', True)
 
         # internal variables
         self.search_results = []
@@ -62,6 +62,11 @@ class pSub(object):
         self.display = streaming_config.get('display', False)
         self.show_mode = streaming_config.get('show_mode', 0)
         self.invert_random = streaming_config.get('invert_random', False)
+        self.notify = streaming_config.get('notify', False)
+
+        if self.notify:
+            import notifications
+            self.notifications = notifications.Notifications(self)
 
         # use a Queue to handle command input while a file is playing.
         # set the thread going now
@@ -136,8 +141,7 @@ class pSub(object):
             
         return url
 
-    @staticmethod
-    def make_request(url):
+    def make_request(self, url):
         """
         GET the supplied url and resturn the response as json.
         Handle any errors present.
@@ -145,7 +149,7 @@ class pSub(object):
         :return: Subsonic response or None on failure
         """
         try:
-            r = requests.get(url=url)
+            r = requests.get(url=url, verify=self.verify_ssl)
         except requests.exceptions.ConnectionError as e:
             click.secho('{}'.format(e), fg='red')
             sys.exit(1)
@@ -202,7 +206,7 @@ class pSub(object):
             url='{}&query={}'.format(self.create_url('search3'), query)
         )
         if results:
-            return results['subsonic-response']['searchResult3']
+            return results['subsonic-response'].get('searchResult3', [])
         return []
 
     def get_artists(self):
@@ -212,7 +216,7 @@ class pSub(object):
         """
         artists = self.make_request(url=self.create_url('getArtists'))
         if artists:
-            return artists['subsonic-response']['artists']['index']
+            return artists['subsonic-response']['artists'].get('index', [])
         return []
 
     def get_playlists(self):
@@ -222,7 +226,7 @@ class pSub(object):
         """
         playlists = self.make_request(url=self.create_url('getPlaylists'))
         if playlists:
-            return playlists['subsonic-response']['playlists']['playlist']
+            return playlists['subsonic-response']['playlists'].get('playlist', [])
         return []
 
     def get_music_folders(self):
@@ -232,7 +236,7 @@ class pSub(object):
         """
         music_folders = self.make_request(url=self.create_url('getMusicFolders'))
         if music_folders:
-            return music_folders['subsonic-response']['musicFolders']['musicFolder']
+            return music_folders['subsonic-response']['musicFolders'].get('musicFolder', [])
         return []
 
     def get_album_tracks(self, album_id):
@@ -244,19 +248,19 @@ class pSub(object):
         album_info = self.make_request('{}&id={}'.format(self.create_url('getAlbum'), album_id))
         songs = []
 
-        for song in album_info['subsonic-response']['album']['song']:
+        for song in album_info['subsonic-response']['album'].get('song', []):
             songs.append(song)
 
         return songs
 
     def play_random_songs(self, music_folder):
         """
-        Gather random tracks from the Subsonic server and playthem endlessly
+        Gather random tracks from the Subsonic server and play them endlessly
         :param music_folder: integer denoting music folder to filter tracks
         """
         url = self.create_url('getRandomSongs')
-
-        if music_folder != 0:
+        
+        if music_folder is not None:
             url = '{}&musicFolderId={}'.format(url, music_folder)
 
         playing = True
@@ -267,7 +271,7 @@ class pSub(object):
             if not random_songs:
                 return
 
-            for random_song in random_songs['subsonic-response']['randomSongs']['song']:
+            for random_song in random_songs['subsonic-response']['randomSongs'].get('song', []):
                 if not playing:
                     return
                 playing = self.play_stream(dict(random_song))
@@ -286,7 +290,7 @@ class pSub(object):
             if not similar_songs:
                 return
 
-            for radio_track in similar_songs['subsonic-response']['similarSongs2']['song']:
+            for radio_track in similar_songs['subsonic-response']['similarSongs2'].get('song', []):
                 if not playing:
                     return
                 playing = self.play_stream(dict(radio_track))
@@ -376,6 +380,9 @@ class pSub(object):
         stream_url = self.create_url('download')
         song_id = track_data.get('id')
 
+        if self.notify:
+            self.notifications.get_cover_art(track_data)
+
         if not song_id:
             return False
 
@@ -417,6 +424,9 @@ class pSub(object):
             params += ['-nodisp']
 
         try:
+            if self.notify:
+                self.notifications.show_notification(track_data)
+
             ffplay = Popen(params)
 
             has_finished = None
@@ -641,7 +651,8 @@ pass_pSub = click.make_pass_decorator(pSub)
 @pass_pSub
 def random(psub, music_folder):
     if not music_folder:
-        music_folders = get_as_list(psub.get_music_folders()) + [{'name': 'All', 'id': 0}]
+        music_folders = get_as_list(psub.get_music_folders()) + [{'name': 'All', 'id': None}]
+        
         chosen_folder = questionary.select(
             "Choose a music folder to play random tracks from",
             choices=[folder.get('name') for folder in music_folders]
