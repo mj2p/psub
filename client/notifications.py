@@ -12,7 +12,7 @@ class Notifications(object):
         try:
             notification = Notification(
                 title=track_data.get("title", "No Title"),
-                description=track_data.get("artist", "No Artist"),
+                message=track_data.get("artist", "No Artist"),
                 icon_path="/tmp/art.jpg",
                 duration=5,
                 urgency="normal",
