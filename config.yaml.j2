@@ -1,0 +1,98 @@
+#         _________    ___.
+#  ______/   _____/__ _\_ |__
+#  \____ \_____  \|  |  \ __ \
+#  |  |_> >       \  |  / \_\ \
+#  |   __/_______  /____/|___  /
+#  |__|          \/          \/
+#
+#
+
+# This section defines the connection to your Subsonic server
+
+server:
+    # This is the url you would use to access your Subsonic server without the protocol
+    # (http:// or https://)
+
+    host: demo.subsonic.org
+
+    # Username and Password next
+
+    username: username
+    password: password
+
+    # If your Subsonic server is accessed over https:// set this to true
+
+    ssl: false
+
+    # Set this to false in order to ignore ssl certificate errors (not recommended)
+    verify_ssl: true
+
+    # If you use a server with a specific API version set it here
+
+    api: 1.16.1
+
+# This section defines the playback of music by pSub
+
+streaming:
+
+    # The default format is 'raw'
+    # this means the original file is streamed from your server
+    # and no transcoding takes place.
+    # set this to mp3 or wav etc.
+    # depending on the transcoders available to your user on the server
+
+    format: raw
+
+    # Artist, Album and Playlist playback can accept a -r/--random flag.
+    # by default, setting the flag on the command line means "randomise playback".
+    # Setting the following to true will invert that behaviour so that playback is randomised by default
+    # and passing the -r flag skips the random shuffle
+
+    invert_random: false
+
+    # pSub can use system notifications to alert you to a song change.
+    # it will show you the details of the currently playing song.
+    # to disable notification, set this to false
+
+    notify: true
+    image_size: 128
+
+    # During playback you can press these keys to control which track is playing
+    controls:
+        next: n
+        previous: p
+        restart: b
+        exit: x
+
+    # pSub can utilise various audio players for playback.
+    # choose which player you would like to utilise here and then set the player specific options in the players config section
+
+    player: ffplay
+
+    # Player configs
+    ffplay:
+        # By default, the player window is hidden and control takes place through the pSub cli
+        # set this to true to enable the player window.
+        # It allows for more controls (volume mainly) but will grab the focus of your
+        # keyboard when tracks change which can be annoying if you are typing somewhere else
+
+        display: false
+
+        # When the player window is shown, choose the default show mode
+        # Options are:
+        # 0: show video or album art
+        # 1: show audio waves
+        # 2: show audio frequency band using RDFT ((Inverse) Real Discrete Fourier Transform)
+
+        show_mode: 0
+
+        # If using ffplay with flatpak-spawn you may need some commands before the default.
+        # This option allows you to add those commands
+        pre_exe: ''
+
+    vlc:
+        # VLC needs a moment or two when playback starts for that to be registered.
+        # If you find tracks skip and play over each other, try increasing this value
+        playing_interval: 2
+
+    mpv:

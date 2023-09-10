@@ -4,9 +4,14 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
+pytest = "*"
+pytest-mock = "*"
+pre-commit = "*"
+requests-mock = "*"
+coverage = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.10"
 
 [pipenv]
 allow_prereleases = true
@@ -14,7 +19,3 @@ allow_prereleases = true
 [packages.pSub]
 editable = true
 path = "."
-
-[packages.e1839a8]
-path = "."
-editable = true

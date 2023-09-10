@@ -1,0 +1,15 @@
+[run]
+branch = True
+command_line = -m pytest
+source =
+    cli
+    client
+    players
+omit =
+    */.local/*
+    */tests/*
+    */setup.py
+
+[report]
+# fail_under = 56
+show_missing = True
